@@ -24,14 +24,28 @@ st.markdown(
         font-family: 'Inter', sans-serif;
     }
 
+    /* subtle dot-grid texture behind the whole app */
+    [data-testid="stAppViewContainer"] {
+        background-image: radial-gradient(rgba(99, 102, 241, 0.14) 1px, transparent 1px);
+        background-size: 22px 22px;
+    }
+
     .hero-title {
         font-size: 2.6rem;
         font-weight: 800;
-        background: linear-gradient(90deg, #6366f1, #22d3ee);
+        background: linear-gradient(120deg, #6366f1, #22d3ee, #6366f1);
+        background-size: 200% 200%;
+        animation: gradientShift 6s ease infinite;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.2rem;
         line-height: 1.1;
+    }
+
+    @keyframes gradientShift {
+        0%   { background-position: 0% 50%; }
+        50%  { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
     }
 
     .hero-subtitle {
@@ -47,14 +61,26 @@ st.markdown(
         margin-bottom: 0.8rem;
     }
 
+    /* cards: fade in on load, lift + tilt on hover */
     [data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: 16px !important;
         animation: fadeIn 0.5s ease-in-out;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"]:hover {
+        transform: translateY(-5px) rotateX(2deg) scale(1.01);
+        box-shadow: 0 14px 28px rgba(99, 102, 241, 0.28);
     }
 
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.55); }
+        70%  { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
     }
 
     /* step tracker */
@@ -95,7 +121,7 @@ st.markdown(
     .step.active .dot {
         background: #6366f1;
         border-color: #6366f1;
-        box-shadow: 0 0 14px 2px rgba(99, 102, 241, 0.55);
+        animation: pulse 2s infinite;
     }
     .step .label {
         font-size: 0.82rem;
@@ -118,6 +144,11 @@ st.markdown(
         font-size: 0.85rem;
         font-weight: 600;
         margin-bottom: 0.6rem;
+        transition: transform 0.25s ease, background 0.25s ease;
+    }
+    .badge:hover {
+        transform: translateY(-2px) scale(1.05);
+        background: rgba(99, 102, 241, 0.28);
     }
     </style>
     """,
