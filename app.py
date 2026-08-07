@@ -1,3 +1,4 @@
+import datetime
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -18,205 +19,223 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fraunces:opsz,wght@9..144,500..700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500..700;1,9..144,500..700&family=Inter:wght@400;500;600;700&display=swap');
 
     html, body, [class*="css"]  {
         font-family: 'Inter', sans-serif;
     }
+    .mono { font-family: 'JetBrains Mono', monospace; }
 
-    .eyebrow {
-        font-size: 0.74rem;
-        font-weight: 700;
-        letter-spacing: 0.2em;
+    /* header bar */
+    .fm-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.4rem;
+    }
+    .fm-brand { display: flex; align-items: center; gap: 0.7rem; }
+    .fm-monogram {
+        width: 34px; height: 34px;
+        border: 1px solid #c9a24b;
+        display: flex; align-items: center; justify-content: center;
+        font-family: 'Fraunces', serif;
+        font-style: italic;
+        font-size: 1.1rem;
         color: #c9a24b;
+    }
+    .fm-crumbs {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.74rem;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
-        margin-bottom: 0.4rem;
+        color: #7c8798;
+    }
+    .fm-timestamp {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+        color: #6b7688;
+        text-align: right;
     }
 
     .hero-title {
-        font-family: 'Fraunces', serif;
-        font-size: 2.7rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 2.6rem;
         font-weight: 600;
-        font-optical-sizing: auto;
         color: #f2f5f9;
-        margin-bottom: 0.25rem;
-        line-height: 1.1;
-        border-left: 4px solid #c9a24b;
-        padding-left: 0.8rem;
-        letter-spacing: -0.01em;
+        margin: 0.3rem 0 0.3rem 0;
+        line-height: 1.08;
+        letter-spacing: -0.015em;
     }
-
-    .section-title {
+    .hero-title .accent {
         font-family: 'Fraunces', serif;
+        font-style: italic;
+        font-weight: 600;
+        color: #c9a24b;
     }
 
     .hero-subtitle {
-        color: #93a0b3;
-        font-size: 1rem;
-        margin-bottom: 1.1rem;
-        padding-left: 1rem;
+        color: #8a96a8;
+        font-size: 0.98rem;
+        margin-bottom: 1.4rem;
+        max-width: 640px;
     }
 
-    .snapshot-inline {
-        color: #6b7688;
-        font-size: 0.76rem;
-        letter-spacing: 0.03em;
-        margin: 0 0 1.6rem 1rem;
-    }
-
-    .section-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin-top: 0.4rem;
-        margin-bottom: 0.8rem;
-        color: #dde3ec;
-    }
-
-    [data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 8px !important;
-        animation: fadeIn 0.4s ease-in-out;
-        transition: box-shadow 0.25s ease, border-color 0.25s ease;
-        border-color: rgba(255, 255, 255, 0.08) !important;
-    }
-    [data-testid="stVerticalBlockBorderWrapper"]:hover {
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-        border-color: rgba(58, 110, 165, 0.45) !important;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(6px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .step-track {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        position: relative;
-        margin: 0.8rem 0 1.8rem 0;
-        padding: 0 2%;
-    }
-    .step-track::before {
-        content: '';
-        position: absolute;
-        top: 8px;
-        left: 7%;
-        right: 7%;
-        height: 1px;
-        background: #263140;
-        z-index: 0;
-    }
-    .step {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        flex-direction: column;
+    /* rectangular badges with a marker square, sit top-right of header */
+    .tag-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .tag {
+        display: inline-flex;
         align-items: center;
-        flex: 1;
-    }
-    .step .dot {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        background: #1a212c;
-        border: 2px solid #2a3644;
-    }
-    .step.active .dot {
-        background: #3a6ea5;
-        border-color: #3a6ea5;
-    }
-    .step .label {
-        font-size: 0.78rem;
-        color: #74808f;
-        margin-top: 0.5rem;
-        text-align: center;
-        max-width: 120px;
-    }
-    .step.active .label {
-        color: #dde3ec;
-        font-weight: 600;
-    }
-
-    .badge {
-        display: inline-block;
-        padding: 0.32rem 0.8rem;
-        border-radius: 4px;
-        background: rgba(201, 162, 75, 0.1);
-        border: 1px solid rgba(201, 162, 75, 0.4);
-        color: #d9bd7a;
-        font-size: 0.82rem;
-        font-weight: 600;
-        margin-bottom: 0.6rem;
-        letter-spacing: 0.01em;
-    }
-
-    .status-bar {
-        height: 4px;
-        margin: -1rem -1rem 0.9rem -1rem;
-        border-radius: 8px 8px 0 0;
-    }
-
-    .best-tag, .warn-tag, .flat-tag {
-        display: inline-block;
-        font-size: 0.68rem;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        border-radius: 3px;
-        padding: 0.14rem 0.45rem;
-        margin-left: 0.5rem;
-    }
-    .best-tag {
-        color: #1a2e22;
-        background: #4ade80;
-        border: 1px solid #4ade80;
-    }
-    .warn-tag {
-        color: #2e1414;
-        background: #f87171;
-        border: 1px solid #f87171;
-    }
-    .flat-tag {
-        color: #93a0b3;
-        background: rgba(147, 160, 179, 0.12);
-        border: 1px solid rgba(147, 160, 179, 0.28);
-    }
-
-    .inconclusive-mark {
-        font-size: 0.7rem;
-        color: #93a0b3;
-        border-bottom: 1px dotted #93a0b3;
-        cursor: help;
-    }
-
-    .ci-note {
-        font-size: 0.74rem;
-        color: #6b7688;
-        text-align: center;
-        margin-top: -0.4rem;
-    }
-
-    .rt-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    .rt-table th {
-        text-align: right;
+        gap: 0.5rem;
+        padding: 0.4rem 0.75rem;
+        border: 1px solid #2a3644;
+        font-family: 'JetBrains Mono', monospace;
         font-size: 0.72rem;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: #74808f;
+        color: #b7c0cd;
+    }
+    .tag .sq { width: 8px; height: 8px; display: inline-block; }
+    .tag.priv { border-color: #c9a24b; }
+    .tag.priv .sq { background: #c9a24b; }
+    .tag.under .sq { border: 1px solid #7c8798; }
+
+    .section-title {
+        font-family: 'Fraunces', serif;
         font-weight: 600;
-        padding: 0.5rem 0.7rem;
+        font-size: 1.35rem;
+        margin-top: 0.3rem;
+        margin-bottom: 0;
+        color: #eef1f6;
+    }
+    .section-meta {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+        color: #7c8798;
+        text-transform: uppercase;
+    }
+    .section-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        border-bottom: 1px solid #212a37;
+        padding-bottom: 0.6rem;
+        margin: 1.6rem 0 1rem 0;
+    }
+
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 6px !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        transition: border-color 0.2s ease;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"]:hover {
+        border-color: rgba(201, 162, 75, 0.4) !important;
+    }
+
+    /* step tracker: square numbered/check badges */
+    .step-track {
+        display: flex;
+        gap: 1.6rem;
+        flex-wrap: wrap;
+        margin: 0.2rem 0 1.6rem 0;
+    }
+    .step-item { display: flex; align-items: center; gap: 0.7rem; }
+    .step-box {
+        width: 30px; height: 30px;
+        border: 1px solid #2a3644;
+        display: flex; align-items: center; justify-content: center;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.78rem;
+        color: #5c6779;
+        flex-shrink: 0;
+    }
+    .step-item.done .step-box { border-color: #4ade80; color: #4ade80; }
+    .step-item.active .step-box { border-color: #c9a24b; color: #c9a24b; }
+    .step-status {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.64rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #5c6779;
+        display: block;
+    }
+    .step-item.done .step-status { color: #4ade80; }
+    .step-item.active .step-status { color: #c9a24b; }
+    .step-label { font-size: 0.9rem; font-weight: 600; color: #cfd6e0; }
+    .step-item:not(.done):not(.active) .step-label { color: #5c6779; }
+
+    /* gauge card chrome */
+    .status-bar { height: 3px; margin: -1rem -1rem 0.8rem -1rem; }
+    .gauge-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.1rem; }
+    .gauge-name { font-weight: 700; font-size: 0.98rem; color: #eef1f6; }
+    .gauge-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: #7c8798; letter-spacing: 0.04em; }
+
+    .pill {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.64rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border: 1px solid;
+        padding: 0.16rem 0.4rem;
+        white-space: nowrap;
+    }
+    .pill.ok { color: #4ade80; border-color: #4ade80; }
+    .pill.watch { color: #d9bd7a; border-color: #d9bd7a; }
+    .pill.breach { color: #f87171; border-color: #f87171; }
+
+    .inconclusive-mark {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.66rem;
+        color: #7c8798;
+        border-bottom: 1px dotted #7c8798;
+        cursor: help;
+    }
+
+    .stat-strip {
+        display: flex;
+        justify-content: space-between;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.76rem;
+        color: #97a2b2;
+        margin-top: 0.8rem;
+        padding-top: 0.7rem;
+        border-top: 1px solid #1c232e;
+    }
+    .stat-strip b { color: #d7dde5; font-weight: 600; }
+
+    .rt-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .rt-table th {
+        text-align: right;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.68rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #7c8798;
+        font-weight: 600;
+        padding: 0.5rem 0.6rem;
         border-bottom: 1px solid #263140;
     }
     .rt-table th:first-child, .rt-table th:nth-child(2) { text-align: left; }
     .rt-table td {
         text-align: right;
-        padding: 0.55rem 0.7rem;
+        padding: 0.5rem 0.6rem;
         border-bottom: 1px solid #1a212c;
+        font-family: 'JetBrains Mono', monospace;
         font-variant-numeric: tabular-nums;
     }
-    .rt-table td:first-child, .rt-table td:nth-child(2) { text-align: left; }
-    .rt-table tr:hover td { background: rgba(58, 110, 165, 0.06); }
-    .rt-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 0.4rem; }
+    .rt-table td:first-child, .rt-table td:nth-child(2) {
+        text-align: left;
+        font-family: 'Inter', sans-serif;
+    }
+    .rt-table tr:hover td { background: rgba(201, 162, 75, 0.05); }
+    .rt-table td.breach { color: #f87171; }
+    .rt-table caption-note { color: #7c8798; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -246,23 +265,39 @@ ATTR_CONFIG = {
     },
 }
 
-METRIC_CAPTIONS = {
-    "Statistical parity diff": "How different the share of predicted positive outcomes is between groups.",
-    "TPR diff (Equal Opportunity)": "How different the share of correctly approved good payers is between groups.",
-    "FPR diff (EOd)": "How different the share of cases wrongly flagged as risk is between groups.",
+# Every entry: key -> (label, caption, null_value, value_format, is_ratio)
+METRIC_INFO = {
+    "SP_diff": (
+        "Statistical parity diff",
+        "How different the share of predicted positive outcomes is between groups.",
+        0.0, "{:.3f}", False,
+    ),
+    "TPR_diff": (
+        "TPR diff (Equal Opportunity)",
+        "How different the share of correctly approved good payers is between groups.",
+        0.0, "{:.3f}", False,
+    ),
+    "FPR_diff": (
+        "FPR diff (EOd)",
+        "How different the share of cases wrongly flagged as risk is between groups.",
+        0.0, "{:.3f}", False,
+    ),
+    "DI": (
+        "Disparate impact (four-fifths ratio)",
+        "Underprivileged approval rate as a share of the privileged rate. 1.00 = parity, ≥ 0.80 = within the four-fifths tolerance.",
+        1.0, "{:.2f}", True,
+    ),
 }
+METRIC_CAPTIONS = {v[0]: v[1] for v in METRIC_INFO.values()}
+METRIC_KEYS = {v[0]: k for k, v in METRIC_INFO.items()}
 
-METRIC_KEYS = {
-    "Statistical parity diff": "SP_diff",
-    "TPR diff (Equal Opportunity)": "TPR_diff",
-    "FPR diff (EOd)": "FPR_diff",
-}
-
-# Fixed heuristic thresholds used for TPR diff / FPR diff, where no single
-# regulatory numeric standard exists. These are common cutoffs seen in the
-# fairness literature, not a legal requirement.
+# Heuristic thresholds for the diff-style metrics (no regulatory number exists).
 HEURISTIC_GREEN = 0.03
 HEURISTIC_RED = 0.07
+# Distance-from-parity thresholds for Disparate Impact, anchored on the
+# four-fifths (80%) adverse-impact rule: DI < 0.80 is the classic breach line.
+DI_GREEN = 0.20  # |1 - DI| < 0.20  <=>  DI > 0.80
+DI_RED = 0.40
 
 
 # ----------------------------------------------------------------------------
@@ -288,29 +323,27 @@ def _rates(y_true, y_pred):
 
 
 def fairness_metrics(df, y_true_col, y_pred_col, group_col, priv_code, under_code):
-    """Statistical parity, TPR and FPR differences between privileged and
-    underprivileged groups. Positive value = underprivileged group is worse off.
-    Also returns the privileged group's raw positive rate, needed to translate
-    the four-fifths (80%) adverse-impact rule into an absolute-difference
-    threshold for statistical parity."""
+    """SP/TPR/FPR differences plus Disparate Impact (four-fifths ratio).
+    Positive diff = underprivileged group is worse off. DI < 1 = same."""
     priv = df[df[group_col].astype(str) == str(priv_code)]
     under = df[df[group_col].astype(str) == str(under_code)]
 
     priv_pos, priv_tpr, priv_fpr = _rates(priv[y_true_col].values, priv[y_pred_col].values)
     under_pos, under_tpr, under_fpr = _rates(under[y_true_col].values, under[y_pred_col].values)
 
+    di = under_pos / priv_pos if priv_pos else np.nan
+
     return {
         "SP_diff": under_pos - priv_pos,
         "TPR_diff": under_tpr - priv_tpr,
         "FPR_diff": under_fpr - priv_fpr,
+        "DI": di,
         "priv_pos_rate": priv_pos,
     }
 
 
 def bootstrap_ci(df, y_true_col, y_pred_col, group_col, priv_code, under_code, n_boot=N_BOOT, seed=42):
-    """95% bootstrap confidence interval for each metric, resampling each
-    group independently with replacement. Used to flag when an observed gap
-    is not statistically distinguishable from zero."""
+    """95% bootstrap CI for each metric, resampling each group independently."""
     rng = np.random.default_rng(seed)
     priv = df[df[group_col].astype(str) == str(priv_code)]
     under = df[df[group_col].astype(str) == str(under_code)]
@@ -319,7 +352,7 @@ def bootstrap_ci(df, y_true_col, y_pred_col, group_col, priv_code, under_code, n
     yt_u, yp_u = under[y_true_col].values, under[y_pred_col].values
     n_p, n_u = len(yt_p), len(yt_u)
 
-    sp_boot, tpr_boot, fpr_boot = [], [], []
+    sp_boot, tpr_boot, fpr_boot, di_boot = [], [], [], []
     if n_p > 0 and n_u > 0:
         for _ in range(n_boot):
             idx_p = rng.integers(0, n_p, n_p)
@@ -329,6 +362,7 @@ def bootstrap_ci(df, y_true_col, y_pred_col, group_col, priv_code, under_code, n
             sp_boot.append(pu - pp)
             tpr_boot.append(tu - tp)
             fpr_boot.append(fu - fp)
+            di_boot.append(pu / pp if pp else np.nan)
 
     def ci(vals):
         arr = np.array(vals, dtype=float)
@@ -337,42 +371,48 @@ def bootstrap_ci(df, y_true_col, y_pred_col, group_col, priv_code, under_code, n
             return (np.nan, np.nan)
         return float(np.percentile(arr, 2.5)), float(np.percentile(arr, 97.5))
 
-    return {"SP_ci": ci(sp_boot), "TPR_ci": ci(tpr_boot), "FPR_ci": ci(fpr_boot)}
+    return {
+        "SP_diff_ci": ci(sp_boot),
+        "TPR_diff_ci": ci(tpr_boot),
+        "FPR_diff_ci": ci(fpr_boot),
+        "DI_ci": ci(di_boot),
+    }
 
 
-def metric_threshold(metric_key, priv_pos_rate):
-    """Return (green_cutoff, red_cutoff) for a metric. For statistical parity,
-    the green cutoff approximates the four-fifths (80%) adverse-impact rule
-    translated into an absolute-difference threshold using the privileged
-    group's observed positive rate. For TPR/FPR diff, no equivalent
-    regulatory rule exists, so fixed literature-heuristic cutoffs are used."""
+def metric_thresholds(metric_key, priv_pos_rate):
+    """Return (green, red) cutoffs in 'distance from the ideal value' units."""
+    if metric_key == "DI":
+        return DI_GREEN, DI_RED
     if metric_key == "SP_diff" and priv_pos_rate and not np.isnan(priv_pos_rate):
-        green = 0.2 * priv_pos_rate
+        green = 0.2 * priv_pos_rate  # four-fifths rule, translated to an absolute gap
         return green, green * 1.75
     return HEURISTIC_GREEN, HEURISTIC_RED
 
 
-def status_color(value, ci_low, ci_high, green_cutoff, red_cutoff):
-    """Color always reflects the magnitude of the point estimate (green/amber/
-    red). Statistical significance is reported separately as a flag, not by
-    flattening the color — a small gap can still be worth flagging as
-    directional even when the CI hasn't ruled out zero."""
-    v = abs(value)
-    if v < green_cutoff:
-        color = "#22c55e"
-    elif v < red_cutoff:
-        color = "#d97706"
+def distance(metric_key, value):
+    null_value = METRIC_INFO[metric_key][2]
+    return abs(value - null_value)
+
+
+def status(metric_key, value, ci_low, ci_high, green_cut, red_cut):
+    d = distance(metric_key, value)
+    if d < green_cut:
+        color, label = "#4ade80", "ok"
+    elif d < red_cut:
+        color, label = "#d9bd7a", "watch"
     else:
-        color = "#dc2626"
-    inconclusive = not (np.isnan(ci_low) or np.isnan(ci_high)) and ci_low <= 0 <= ci_high
-    return color, inconclusive
+        color, label = "#f87171", "breach"
+    null_value = METRIC_INFO[metric_key][2]
+    inconclusive = not (np.isnan(ci_low) or np.isnan(ci_high)) and ci_low <= null_value <= ci_high
+    return color, label, inconclusive
 
 
-RADAR_COLORS = ["#c9a24b", "#3a6ea5", "#8a5fd6", "#4ade80", "#f87171"]
+PILL_TEXT = {"ok": "WITHIN TOLERANCE", "watch": "MONITOR", "breach": "BREACH"}
+RADAR_COLORS = ["#c9a24b", "#5b8ac2", "#8a5fd6", "#4ade80", "#f87171"]
 
 
 def make_radar(current_df, models, metric_keys=("SP_diff", "TPR_diff", "FPR_diff")):
-    labels = {"SP_diff": "SP diff", "TPR_diff": "TPR diff", "FPR_diff": "FPR diff"}
+    labels = {"SP_diff": "SP diff", "TPR_diff": "EO diff", "FPR_diff": "FPR diff"}
     theta = [labels[k] for k in metric_keys] + [labels[metric_keys[0]]]
     fig = go.Figure()
     for i, model in enumerate(models):
@@ -384,62 +424,61 @@ def make_radar(current_df, models, metric_keys=("SP_diff", "TPR_diff", "FPR_diff
         color = RADAR_COLORS[i % len(RADAR_COLORS)]
         fig.add_trace(
             go.Scatterpolar(
-                r=vals,
-                theta=theta,
-                name=model,
+                r=vals, theta=theta, name=model,
                 line={"color": color, "width": 2},
-                fill="toself",
-                fillcolor=color,
-                opacity=0.75,
+                fill="toself", fillcolor=color, opacity=0.7,
             )
         )
     fig.update_layout(
         polar={
             "bgcolor": "rgba(0,0,0,0)",
-            "radialaxis": {"visible": True, "color": "#6b7688", "gridcolor": "#263140"},
-            "angularaxis": {"color": "#dde3ec", "gridcolor": "#263140"},
+            "radialaxis": {"visible": True, "color": "#5c6779", "gridcolor": "#1c232e"},
+            "angularaxis": {"color": "#cfd6e0", "gridcolor": "#1c232e"},
         },
         showlegend=True,
-        legend={"orientation": "h", "y": -0.1, "font": {"color": "#dde3ec"}},
+        legend={"orientation": "h", "y": -0.12, "font": {"color": "#cfd6e0", "size": 11}},
         paper_bgcolor="rgba(0,0,0,0)",
-        font={"color": "#dde3ec", "family": "Inter, sans-serif"},
-        height=380,
-        margin=dict(l=60, r=60, t=30, b=40),
+        font={"color": "#cfd6e0", "family": "Inter, sans-serif"},
+        height=360,
+        margin=dict(l=50, r=50, t=20, b=40),
     )
     return fig
 
 
-def make_gauge(value, baseline_value=None, color="#3a6ea5"):
+def make_gauge(metric_key, value, color, baseline_value=None):
+    is_ratio = METRIC_INFO[metric_key][4]
+    display_value = value if is_ratio else abs(value)
+    axis_max = 1.4 if is_ratio else max(0.15, abs(value) * 1.3, 0.05)
+    fmt = ".2f" if is_ratio else ".3f"
+
     indicator_kwargs = dict(
         mode="gauge+number",
-        value=abs(value),
-        number={"valueformat": ".3f", "font": {"size": 34}},
+        value=display_value,
+        number={"valueformat": fmt, "font": {"size": 32}},
         gauge={
-            "axis": {"range": [0, 0.15], "tickwidth": 1},
-            "bar": {"color": color, "thickness": 0.35},
+            "axis": {"range": [0, axis_max], "tickwidth": 1, "tickcolor": "#3a4454"},
+            "bar": {"color": color, "thickness": 0.32},
             "bgcolor": "rgba(0,0,0,0)",
-            "steps": [
-                {"range": [0, 0.03], "color": "rgba(34,197,94,0.10)"},
-                {"range": [0.03, 0.07], "color": "rgba(217,119,6,0.10)"},
-                {"range": [0.07, 0.15], "color": "rgba(220,38,38,0.10)"},
-            ],
+            "borderwidth": 0,
+            "steps": [{"range": [0, axis_max], "color": "rgba(255,255,255,0.03)"}],
         },
     )
     if baseline_value is not None:
+        ref = baseline_value if is_ratio else abs(baseline_value)
         indicator_kwargs["mode"] = "gauge+number+delta"
         indicator_kwargs["delta"] = {
-            "reference": abs(baseline_value),
-            "valueformat": ".3f",
-            "decreasing": {"color": "#16a34a"},
-            "increasing": {"color": "#dc2626"},
-            "font": {"size": 16},
+            "reference": ref,
+            "valueformat": fmt,
+            "decreasing": {"color": "#f87171" if is_ratio else "#4ade80"},
+            "increasing": {"color": "#4ade80" if is_ratio else "#f87171"},
+            "font": {"size": 14},
         }
     fig = go.Figure(go.Indicator(**indicator_kwargs))
     fig.update_layout(
-        height=210,
-        margin=dict(l=20, r=20, t=10, b=10),
+        height=190,
+        margin=dict(l=16, r=16, t=6, b=6),
         paper_bgcolor="rgba(0,0,0,0)",
-        font={"color": "#dde3ec", "family": "Inter, sans-serif"},
+        font={"color": "#eef1f6", "family": "JetBrains Mono, monospace"},
     )
     return fig
 
@@ -473,43 +512,70 @@ dataset_choice = st.sidebar.radio("Dataset", available_datasets, index=0)
 available_models = list(monitor_data["model"].unique())
 selected_models = st.sidebar.multiselect("Models", available_models, default=available_models)
 
-metric_name = st.sidebar.selectbox("Metric", list(METRIC_CAPTIONS.keys()), index=2)
+metric_name = st.sidebar.selectbox("Metric", list(METRIC_KEYS.keys()), index=3)
 metric_key = METRIC_KEYS[metric_name]
 
 # ----------------------------------------------------------------------------
-# Hero
+# Header bar
 # ----------------------------------------------------------------------------
-st.markdown('<div class="eyebrow">Credit Risk &amp; Fairness Monitoring</div>', unsafe_allow_html=True)
-st.markdown('<div class="hero-title">Fairness Monitor — Credit Scoring</div>', unsafe_allow_html=True)
+now = datetime.datetime.now()
+ref_id = f"FRM-{now.year}-{now.timetuple().tm_yday:03d}"
 st.markdown(
-    '<div class="hero-subtitle">Receives model predictions, true labels, and the protected attribute. '
-    "Never sees the input features.</div>",
+    f"""
+    <div class="fm-header">
+        <div class="fm-brand">
+            <div class="fm-monogram">FM</div>
+            <div class="fm-crumbs">Credit Risk &nbsp;·&nbsp; Fairness Monitoring &nbsp;·&nbsp; Ref {ref_id}</div>
+        </div>
+        <div class="fm-timestamp">Last evaluation<br>{now.strftime('%d %b %Y · %H:%M')}</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    '<div class="hero-title">Fairness Monitor <span class="accent">Console</span></div>',
     unsafe_allow_html=True,
 )
 st.markdown(
-    '<div class="snapshot-inline">Point-in-time comparison of two model runs — not a continuous production feed.</div>',
+    '<div class="hero-subtitle">Point-in-time comparison of model predictions before and after bias '
+    "mitigation. Reads predictions, ground truth and the protected attribute only — never the raw "
+    "input features.</div>",
     unsafe_allow_html=True,
 )
+st.markdown(
+    f"""
+    <div class="tag-row" style="margin-bottom:1.6rem;">
+        <span class="tag priv"><span class="sq"></span>Privileged &nbsp;·&nbsp; {attr['priv_label']}</span>
+        <span class="tag under"><span class="sq"></span>Underprivileged &nbsp;·&nbsp; {attr['under_label']}</span>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ----------------------------------------------------------------------------
+# Step tracker
+# ----------------------------------------------------------------------------
+steps = ["Data Ingestion", "Bias Detection", "Mitigation", "Validation & Sign-off"]
+is_synthetic = dataset_choice != available_datasets[0]
+statuses = ["done", "done", "done" if is_synthetic else "active", "active" if is_synthetic else ""]
+status_words = {"done": "Complete", "active": "In Progress", "": "Pending"}
 
 with st.container(border=True):
-    st.markdown(
-        f'<span class="badge">Privileged: {attr["priv_label"]}</span> '
-        f'&nbsp; <span class="badge">Underprivileged: {attr["under_label"]}</span>',
-        unsafe_allow_html=True,
-    )
-    st.caption(METRIC_CAPTIONS[metric_name])
-
-    steps = ["Inject bias", "Monitor detects", "FairFinGAN cleans", "Monitor confirms"]
-    active_flags = [True, True, dataset_choice != available_datasets[0], dataset_choice != available_datasets[0]]
     html = '<div class="step-track">'
-    for step, active in zip(steps, active_flags):
-        cls = "step active" if active else "step"
-        html += f'<div class="{cls}"><div class="dot"></div><div class="label">{step}</div></div>'
+    for i, (label, st_cls) in enumerate(zip(steps, statuses)):
+        mark = "✓" if st_cls == "done" else f"{i + 1:02d}"
+        cls = f"step-item {st_cls}".strip()
+        html += (
+            f'<div class="{cls}"><div class="step-box">{mark}</div>'
+            f'<div><span class="step-status">{status_words[st_cls]}</span>'
+            f'<span class="step-label">{label}</span></div></div>'
+        )
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------------
-# Compute results (point estimates + bootstrap CI + dynamic thresholds)
+# Compute results (point estimates + bootstrap CI)
 # ----------------------------------------------------------------------------
 rows = []
 for model in selected_models:
@@ -522,38 +588,37 @@ for model in selected_models:
         rows.append({"model": model, "dataset": ds, **m, **ci})
 
 results_df = pd.DataFrame(rows)
-
 baseline_ds = available_datasets[0]
-improved_count, total_count = 0, 0
-if len(available_datasets) > 1:
-    other_ds = available_datasets[1]
+current = results_df[results_df["dataset"] == dataset_choice]
+baseline_current = results_df[results_df["dataset"] == baseline_ds]
+
+breach_count = 0
+if not current.empty:
+    green_cut, red_cut = metric_thresholds(metric_key, current["priv_pos_rate"].mean())
     for model in selected_models:
-        base_row = results_df[(results_df["model"] == model) & (results_df["dataset"] == baseline_ds)]
-        other_row = results_df[(results_df["model"] == model) & (results_df["dataset"] == other_ds)]
-        if not base_row.empty and not other_row.empty:
-            total_count += 1
-            if abs(other_row[metric_key].values[0]) < abs(base_row[metric_key].values[0]):
-                improved_count += 1
+        r = current[current["model"] == model]
+        if not r.empty:
+            ci_low, ci_high = r[f"{metric_key}_ci"].values[0]
+            _, label, _ = status(metric_key, r[metric_key].values[0], ci_low, ci_high, green_cut, red_cut)
+            if label == "breach":
+                breach_count += 1
 
 st.markdown(
-    f'<div class="section-title">The monitor detects disparity — and regression — across {len(selected_models)} model'
-    f'{"s" if len(selected_models) != 1 else ""}</div>',
+    f"""
+    <div class="section-row">
+        <span class="section-title">{METRIC_INFO[metric_key][0]} by model</span>
+        <span class="section-meta">{breach_count} of {len(selected_models)} models in breach</span>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
-if dataset_choice != baseline_ds and total_count > 0:
-    st.caption(
-        f"{improved_count} of {total_count} models improved on this metric after FairFinGAN cleaning; "
-        f"{total_count - improved_count} regressed. Both are reported — this tool is built to catch either."
-    )
+st.caption(METRIC_INFO[metric_key][1])
 
 # ----------------------------------------------------------------------------
 # Gauges
 # ----------------------------------------------------------------------------
-current = results_df[results_df["dataset"] == dataset_choice]
-baseline_current = results_df[results_df["dataset"] == baseline_ds]
-
 if not current.empty:
-    green_cut, red_cut = metric_threshold(metric_key, current["priv_pos_rate"].mean())
+    green_cut, red_cut = metric_thresholds(metric_key, current["priv_pos_rate"].mean())
     cols = st.columns(len(selected_models)) if selected_models else []
     for col, model in zip(cols, selected_models):
         row = current[current["model"] == model]
@@ -561,31 +626,20 @@ if not current.empty:
             with st.container(border=True):
                 if not row.empty:
                     value = row[metric_key].values[0]
-                    ci_low, ci_high = row[f"{metric_key.split('_')[0]}_ci"].values[0]
-                    color, inconclusive = status_color(value, ci_low, ci_high, green_cut, red_cut)
+                    ci_low, ci_high = row[f"{metric_key}_ci"].values[0]
+                    color, label, inconclusive = status(metric_key, value, ci_low, ci_high, green_cut, red_cut)
                     st.markdown(f'<div class="status-bar" style="background:{color};"></div>', unsafe_allow_html=True)
 
-                    tag_html = ""
-                    if dataset_choice != baseline_ds:
-                        base_row = baseline_current[baseline_current["model"] == model]
-                        if not base_row.empty:
-                            base_val = base_row[metric_key].values[0]
-                            if abs(value) < abs(base_val):
-                                tag_html = '<span class="best-tag">Improved</span>'
-                            elif abs(value) > abs(base_val):
-                                tag_html = '<span class="warn-tag">Regressed</span>'
-                            else:
-                                tag_html = '<span class="flat-tag">No change</span>'
-
-                    ci_html = ""
-                    if inconclusive:
-                        ci_html = (
-                            f' <span class="inconclusive-mark" title="95% CI [{ci_low:.3f}, {ci_high:.3f}] '
-                            'crosses zero">not significant</span>'
-                        )
-
+                    inc_html = (
+                        f' <span class="inconclusive-mark" title="95% CI [{ci_low:.3f}, {ci_high:.3f}]">n.s.</span>'
+                        if inconclusive else ""
+                    )
                     st.markdown(
-                        f'<span style="font-weight:600;">{model}</span>{tag_html}{ci_html}',
+                        f'<div class="gauge-head">'
+                        f'<div><div class="gauge-name">{model}{inc_html}</div>'
+                        f'<div class="gauge-sub">{metric_key.replace("_", " ")}</div></div>'
+                        f'<span class="pill {label}">{PILL_TEXT[label]}</span>'
+                        f"</div>",
                         unsafe_allow_html=True,
                     )
 
@@ -594,98 +648,102 @@ if not current.empty:
                         base_row = baseline_current[baseline_current["model"] == model]
                         if not base_row.empty:
                             baseline_value = base_row[metric_key].values[0]
-                    st.plotly_chart(
-                        make_gauge(value, baseline_value=baseline_value, color=color),
-                        width="stretch",
+                    st.plotly_chart(make_gauge(metric_key, value, color, baseline_value), width="stretch")
+
+                    other_keys = [k for k in ("SP_diff", "TPR_diff", "FPR_diff", "DI") if k != metric_key][:2]
+                    stat_html = "".join(
+                        f'<span>{k.replace("_", " ")} <b>{row[k].values[0]:{METRIC_INFO[k][3][2:-1]}}</b></span>'
+                        for k in other_keys
                     )
+                    st.markdown(f'<div class="stat-strip">{stat_html}</div>', unsafe_allow_html=True)
                 else:
                     st.info(f"No data for {model}.")
 
-    threshold_note = (
-        f"Green cutoff ({green_cut:.3f}) follows the four-fifths (80%) adverse-impact rule, translated to an "
-        "absolute gap using the privileged group's observed rate."
-        if metric_key == "SP_diff"
-        else f"{HEURISTIC_GREEN:.2f} / {HEURISTIC_RED:.2f} are literature-heuristic cutoffs — no metric-specific "
-        "regulatory standard exists for this one."
-    )
-    with st.expander("Methodology: thresholds & significance"):
-        st.caption(threshold_note + " See *Limitations and scope* below for the full caveat.")
-        st.caption(
-            "\"not significant\" next to a model means the 95% bootstrap confidence interval for that gap "
-            "crosses zero — the color still reflects the point estimate, but treat it as directional, not proven."
-        )
+# ----------------------------------------------------------------------------
+# Multi-metric comparison + results table, side by side
+# ----------------------------------------------------------------------------
+st.markdown(
+    '<div class="section-row"><span class="section-title">Metric profile &amp; evaluation results</span>'
+    '<span class="section-meta">Normalised gap · smaller is fairer</span></div>',
+    unsafe_allow_html=True,
+)
 
-# ----------------------------------------------------------------------------
-# Multi-metric comparison (radar)
-# ----------------------------------------------------------------------------
-if not current.empty and len(selected_models) >= 1:
-    st.markdown('<div class="section-title">Multi-metric comparison</div>', unsafe_allow_html=True)
+col_radar, col_table = st.columns([2, 3])
+
+with col_radar:
     with st.container(border=True):
-        st.plotly_chart(make_radar(current, selected_models), width="stretch")
-        st.caption("Smaller shape = less disparity across all three metrics at once. Values are absolute gaps.")
+        if not current.empty and selected_models:
+            st.plotly_chart(make_radar(current, selected_models), width="stretch")
+        else:
+            st.info("Select at least one model.")
 
-# ----------------------------------------------------------------------------
-# Results table + download
-# ----------------------------------------------------------------------------
-st.markdown('<div class="section-title">Results table</div>', unsafe_allow_html=True)
-with st.container(border=True):
-    display_df = results_df.copy()
-    for col in ["SP_diff", "TPR_diff", "FPR_diff"]:
-        display_df[col] = display_df[col].round(4)
+with col_table:
+    with st.container(border=True):
+        display_df = results_df.copy()
+        for col in ["SP_diff", "TPR_diff", "FPR_diff", "DI"]:
+            display_df[col] = display_df[col].round(4)
 
-    rows_html = ""
-    for _, r in display_df.iterrows():
-        ci_low, ci_high = r[f"{metric_key.split('_')[0]}_ci"]
-        g_cut, r_cut = metric_threshold(metric_key, r["priv_pos_rate"])
-        dot_color, _inconclusive = status_color(r[metric_key], ci_low, ci_high, g_cut, r_cut)
-        rows_html += (
-            "<tr>"
-            f"<td><span class='rt-dot' style='background:{dot_color};'></span>{r['model']}</td>"
-            f"<td>{r['dataset']}</td>"
-            f"<td>{r['SP_diff']:.4f}</td>"
-            f"<td>{r['TPR_diff']:.4f}</td>"
-            f"<td>{r['FPR_diff']:.4f}</td>"
-            "</tr>"
+        rows_html = ""
+        for _, r in display_df.iterrows():
+            ci_low, ci_high = r[f"{metric_key}_ci"]
+            g_cut, r_cut = metric_thresholds(metric_key, r["priv_pos_rate"])
+            _, row_label, _ = status(metric_key, r[metric_key], ci_low, ci_high, g_cut, r_cut)
+            cls = "breach" if row_label == "breach" else ""
+            rows_html += (
+                "<tr>"
+                f"<td>{r['model']}</td><td>{r['dataset']}</td>"
+                f"<td class='{cls if metric_key == 'SP_diff' else ''}'>{r['SP_diff']:.4f}</td>"
+                f"<td class='{cls if metric_key == 'TPR_diff' else ''}'>{r['TPR_diff']:.4f}</td>"
+                f"<td class='{cls if metric_key == 'FPR_diff' else ''}'>{r['FPR_diff']:.4f}</td>"
+                f"<td class='{cls if metric_key == 'DI' else ''}'>{r['DI']:.2f}</td>"
+                "</tr>"
+            )
+        table_html = (
+            "<table class='rt-table'><thead><tr>"
+            "<th>Model</th><th>Dataset</th><th>SP diff</th><th>EO diff</th><th>FPR diff</th><th>DI</th>"
+            f"</tr></thead><tbody>{rows_html}</tbody></table>"
         )
-    table_html = (
-        "<table class='rt-table'><thead><tr>"
-        "<th>Model</th><th>Dataset</th><th>SP diff</th><th>TPR diff</th><th>FPR diff</th>"
-        f"</tr></thead><tbody>{rows_html}</tbody></table>"
-    )
-    st.markdown(table_html, unsafe_allow_html=True)
-    st.caption(f"Row color reflects the selected metric ({metric_name}), including the confidence-interval check.")
+        st.markdown(table_html, unsafe_allow_html=True)
+        st.caption("Figures in breach on the active metric shown in breach colour.")
 
-    csv_bytes = display_df.drop(columns=["priv_pos_rate", "SP_ci", "TPR_ci", "FPR_ci"]).to_csv(index=False).encode("utf-8")
-    st.download_button("Download report (CSV)", csv_bytes, file_name="fairness_report.csv", mime="text/csv")
+        csv_bytes = (
+            display_df.drop(columns=["priv_pos_rate", "SP_diff_ci", "TPR_diff_ci", "FPR_diff_ci", "DI_ci"])
+            .to_csv(index=False)
+            .encode("utf-8")
+        )
+        st.download_button("Download report (CSV)", csv_bytes, file_name="fairness_report.csv", mime="text/csv")
 
 # ----------------------------------------------------------------------------
 # SHAP proxy check
 # ----------------------------------------------------------------------------
 if shap_df is not None:
-    with st.expander("View proxy check (SHAP)"):
+    with st.expander("Proxy check (SHAP)"):
         st.dataframe(shap_df, width="stretch", hide_index=True)
         st.caption("Features with high importance and high correlation with the protected attribute are proxy candidates.")
 elif custom_data:
-    with st.expander("View proxy check (SHAP)"):
+    with st.expander("Proxy check (SHAP)"):
         st.info("SHAP proxy check is only available for the preloaded experiment data, not for uploaded CSVs.")
 
 # ----------------------------------------------------------------------------
-# Limitations — stated explicitly rather than left implicit
+# Technical notes
 # ----------------------------------------------------------------------------
-with st.expander("Limitations and scope"):
+with st.expander("Technical notes — methodology, thresholds, limitations"):
     st.markdown(
-        """
-- **Bias is synthetically injected** (15% label flipping), not organically occurring. This demonstrates the
-  monitor's sensitivity to a known, controlled pattern — it has not been validated against real-world,
-  naturally-arising bias, which is typically subtler and structurally different.
-- **This is a point-in-time comparison**, not continuous production monitoring. It compares two static
-  datasets (biased vs. synthetic); it does not track drift over time.
-- **Thresholds are a practical reference, not a legal standard.** The four-fifths rule (statistical parity)
-  comes from US employment discrimination law, not lending regulation. TPR/FPR diff cutoffs are literature
-  heuristics with no official regulatory backing.
-- **Confidence intervals are bootstrap estimates** (200 resamples) computed from the available predictions,
-  not a substitute for a full statistical power analysis.
-- **No access control, audit trail, or versioning.** This is a proof-of-concept dashboard, not a
-  production model-risk-management system.
+        f"""
+**Thresholds.** The Disparate Impact tolerance (≥ 0.80) is the four-fifths rule from EEOC adverse-impact
+guidance — US employment law, not lending regulation, used here as a practical reference point. The SP diff
+green cutoff ({HEURISTIC_GREEN:.2f} as a fallback, or a per-dataset value derived from the same rule) follows
+the same logic. TPR/FPR diff cutoffs ({HEURISTIC_GREEN:.2f} / {HEURISTIC_RED:.2f}) are literature heuristics
+with no regulatory backing.
+
+**Significance.** "n.s." next to a model means the 95% bootstrap confidence interval (200 resamples) for
+that gap includes the no-disparity value — the color still reflects the point estimate, but treat it as
+directional, not proven.
+
+**Scope.**
+- Bias is synthetically injected (15% label flipping), not organically occurring — this shows the monitor's
+  sensitivity to a known pattern, not validation against real-world bias.
+- This is a point-in-time comparison between two static runs, not continuous production monitoring.
+- No access control, audit trail, or versioning — this is a proof-of-concept dashboard.
         """
     )
