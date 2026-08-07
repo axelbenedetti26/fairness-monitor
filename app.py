@@ -24,63 +24,61 @@ st.markdown(
         font-family: 'Inter', sans-serif;
     }
 
-    /* subtle dot-grid texture behind the whole app */
-    [data-testid="stAppViewContainer"] {
-        background-image: radial-gradient(rgba(99, 102, 241, 0.14) 1px, transparent 1px);
-        background-size: 22px 22px;
+    .eyebrow {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        color: #6b8cae;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
     }
 
     .hero-title {
-        font-size: 2.6rem;
-        font-weight: 800;
-        background: linear-gradient(120deg, #6366f1, #22d3ee, #6366f1);
-        background-size: 200% 200%;
-        animation: gradientShift 6s ease infinite;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-size: 2.3rem;
+        font-weight: 700;
+        color: #e8edf4;
         margin-bottom: 0.2rem;
-        line-height: 1.1;
-    }
-
-    @keyframes gradientShift {
-        0%   { background-position: 0% 50%; }
-        50%  { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+        line-height: 1.15;
+        border-left: 4px solid #3a6ea5;
+        padding-left: 0.7rem;
     }
 
     .hero-subtitle {
-        color: #9ca3af;
-        font-size: 1.02rem;
+        color: #8a96a8;
+        font-size: 0.98rem;
         margin-bottom: 1.6rem;
+        padding-left: 0.9rem;
     }
 
     .section-title {
-        font-size: 1.4rem;
+        font-size: 1.25rem;
         font-weight: 700;
         margin-top: 0.4rem;
         margin-bottom: 0.8rem;
+        color: #dde3ec;
     }
 
-    /* cards: fade in on load, lift + tilt on hover */
+    /* cards: quiet fade in on load, subtle lift on hover (no bounce/tilt) */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 16px !important;
-        animation: fadeIn 0.5s ease-in-out;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 8px !important;
+        animation: fadeIn 0.4s ease-in-out;
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+        border-color: rgba(255, 255, 255, 0.08) !important;
     }
     [data-testid="stVerticalBlockBorderWrapper"]:hover {
-        transform: translateY(-5px) rotateX(2deg) scale(1.01);
-        box-shadow: 0 14px 28px rgba(99, 102, 241, 0.28);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+        border-color: rgba(58, 110, 165, 0.45) !important;
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
+        from { opacity: 0; transform: translateY(6px); }
         to   { opacity: 1; transform: translateY(0); }
     }
 
     @keyframes pulse {
-        0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.55); }
-        70%  { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        0%   { box-shadow: 0 0 0 0 rgba(58, 110, 165, 0.5); }
+        70%  { box-shadow: 0 0 0 6px rgba(58, 110, 165, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(58, 110, 165, 0); }
     }
 
     /* step tracker */
@@ -95,11 +93,11 @@ st.markdown(
     .step-track::before {
         content: '';
         position: absolute;
-        top: 10px;
+        top: 8px;
         left: 7%;
         right: 7%;
-        height: 2px;
-        background: #30363d;
+        height: 1px;
+        background: #263140;
         z-index: 0;
     }
     .step {
@@ -111,44 +109,41 @@ st.markdown(
         flex: 1;
     }
     .step .dot {
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         border-radius: 50%;
-        background: #21262d;
-        border: 2px solid #30363d;
-        transition: all 0.35s ease;
+        background: #1a212c;
+        border: 2px solid #2a3644;
+        transition: all 0.3s ease;
     }
     .step.active .dot {
-        background: #6366f1;
-        border-color: #6366f1;
-        animation: pulse 2s infinite;
+        background: #3a6ea5;
+        border-color: #3a6ea5;
+        animation: pulse 2.4s infinite;
     }
     .step .label {
-        font-size: 0.82rem;
-        color: #8b949e;
-        margin-top: 0.55rem;
+        font-size: 0.78rem;
+        color: #74808f;
+        margin-top: 0.5rem;
         text-align: center;
         max-width: 120px;
     }
     .step.active .label {
-        color: #e6edf3;
+        color: #dde3ec;
         font-weight: 600;
     }
 
     .badge {
         display: inline-block;
-        padding: 0.3rem 0.8rem;
-        border-radius: 999px;
-        background: rgba(99, 102, 241, 0.15);
-        color: #a5b4fc;
-        font-size: 0.85rem;
+        padding: 0.3rem 0.75rem;
+        border-radius: 4px;
+        background: rgba(58, 110, 165, 0.14);
+        border: 1px solid rgba(58, 110, 165, 0.3);
+        color: #a9c2dc;
+        font-size: 0.82rem;
         font-weight: 600;
         margin-bottom: 0.6rem;
-        transition: transform 0.25s ease, background 0.25s ease;
-    }
-    .badge:hover {
-        transform: translateY(-2px) scale(1.05);
-        background: rgba(99, 102, 241, 0.28);
+        letter-spacing: 0.01em;
     }
     </style>
     """,
@@ -240,30 +235,40 @@ def gauge_color(value):
     return "#ef4444"
 
 
-def make_gauge(value, title):
+def make_gauge(value, title, baseline_value=None):
     color = gauge_color(value)
-    fig = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=abs(value),
-            number={"valueformat": ".3f", "font": {"size": 34}},
-            gauge={
-                "axis": {"range": [0, 0.15], "tickwidth": 1},
-                "bar": {"color": color, "thickness": 0.35},
-                "bgcolor": "rgba(0,0,0,0)",
-                "steps": [
-                    {"range": [0, 0.03], "color": "rgba(34,197,94,0.15)"},
-                    {"range": [0.03, 0.07], "color": "rgba(245,158,11,0.15)"},
-                    {"range": [0.07, 0.15], "color": "rgba(239,68,68,0.15)"},
-                ],
-            },
-        )
+    indicator_kwargs = dict(
+        mode="gauge+number",
+        value=abs(value),
+        number={"valueformat": ".3f", "font": {"size": 34}},
+        gauge={
+            "axis": {"range": [0, 0.15], "tickwidth": 1},
+            "bar": {"color": color, "thickness": 0.35},
+            "bgcolor": "rgba(0,0,0,0)",
+            "steps": [
+                {"range": [0, 0.03], "color": "rgba(34,197,94,0.12)"},
+                {"range": [0.03, 0.07], "color": "rgba(217,119,6,0.12)"},
+                {"range": [0.07, 0.15], "color": "rgba(220,38,38,0.12)"},
+            ],
+        },
     )
+    # When comparing against the biased baseline, show a real delta with an
+    # up/down arrow — smaller disparity than baseline is an improvement (green).
+    if baseline_value is not None:
+        indicator_kwargs["mode"] = "gauge+number+delta"
+        indicator_kwargs["delta"] = {
+            "reference": abs(baseline_value),
+            "valueformat": ".3f",
+            "decreasing": {"color": "#16a34a"},
+            "increasing": {"color": "#dc2626"},
+            "font": {"size": 16},
+        }
+    fig = go.Figure(go.Indicator(**indicator_kwargs))
     fig.update_layout(
-        height=220,
+        height=230,
         margin=dict(l=20, r=20, t=30, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
-        font={"color": "#e6edf3"},
+        font={"color": "#dde3ec", "family": "Inter, sans-serif"},
         title={"text": title, "font": {"size": 16}},
     )
     return fig
@@ -304,6 +309,7 @@ metric_key = METRIC_KEYS[metric_name]
 # ----------------------------------------------------------------------------
 # Hero
 # ----------------------------------------------------------------------------
+st.markdown('<div class="eyebrow">Credit Risk &amp; Fairness Monitoring</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Fairness Monitor — Credit Scoring</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="hero-subtitle">Receives model predictions, true labels, and the protected attribute. '
@@ -366,6 +372,7 @@ if dataset_choice != baseline_ds and total_count > 0:
 # Gauges
 # ----------------------------------------------------------------------------
 current = results_df[results_df["dataset"] == dataset_choice]
+baseline_current = results_df[results_df["dataset"] == baseline_ds]
 if not current.empty:
     cols = st.columns(len(selected_models)) if selected_models else []
     for col, model in zip(cols, selected_models):
@@ -374,7 +381,15 @@ if not current.empty:
             with st.container(border=True):
                 if not row.empty:
                     value = row[metric_key].values[0]
-                    st.plotly_chart(make_gauge(value, model), use_container_width=True)
+                    baseline_value = None
+                    if dataset_choice != baseline_ds:
+                        base_row = baseline_current[baseline_current["model"] == model]
+                        if not base_row.empty:
+                            baseline_value = base_row[metric_key].values[0]
+                    st.plotly_chart(
+                        make_gauge(value, model, baseline_value=baseline_value),
+                        use_container_width=True,
+                    )
                 else:
                     st.info(f"No data for {model}.")
 
