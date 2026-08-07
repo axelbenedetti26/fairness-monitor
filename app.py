@@ -18,7 +18,7 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fraunces:opsz,wght@9..144,500..700&display=swap');
 
     html, body, [class*="css"]  {
         font-family: 'Inter', sans-serif;
@@ -34,13 +34,20 @@ st.markdown(
     }
 
     .hero-title {
-        font-size: 2.5rem;
-        font-weight: 800;
+        font-family: 'Fraunces', serif;
+        font-size: 2.7rem;
+        font-weight: 600;
+        font-optical-sizing: auto;
         color: #f2f5f9;
         margin-bottom: 0.25rem;
-        line-height: 1.12;
+        line-height: 1.1;
         border-left: 4px solid #c9a24b;
         padding-left: 0.8rem;
+        letter-spacing: -0.01em;
+    }
+
+    .section-title {
+        font-family: 'Fraunces', serif;
     }
 
     .hero-subtitle {
@@ -361,6 +368,47 @@ def status_color(value, ci_low, ci_high, green_cutoff, red_cutoff):
     return color, inconclusive
 
 
+RADAR_COLORS = ["#c9a24b", "#3a6ea5", "#8a5fd6", "#4ade80", "#f87171"]
+
+
+def make_radar(current_df, models, metric_keys=("SP_diff", "TPR_diff", "FPR_diff")):
+    labels = {"SP_diff": "SP diff", "TPR_diff": "TPR diff", "FPR_diff": "FPR diff"}
+    theta = [labels[k] for k in metric_keys] + [labels[metric_keys[0]]]
+    fig = go.Figure()
+    for i, model in enumerate(models):
+        row = current_df[current_df["model"] == model]
+        if row.empty:
+            continue
+        vals = [abs(row[k].values[0]) for k in metric_keys]
+        vals.append(vals[0])
+        color = RADAR_COLORS[i % len(RADAR_COLORS)]
+        fig.add_trace(
+            go.Scatterpolar(
+                r=vals,
+                theta=theta,
+                name=model,
+                line={"color": color, "width": 2},
+                fill="toself",
+                fillcolor=color,
+                opacity=0.75,
+            )
+        )
+    fig.update_layout(
+        polar={
+            "bgcolor": "rgba(0,0,0,0)",
+            "radialaxis": {"visible": True, "color": "#6b7688", "gridcolor": "#263140"},
+            "angularaxis": {"color": "#dde3ec", "gridcolor": "#263140"},
+        },
+        showlegend=True,
+        legend={"orientation": "h", "y": -0.1, "font": {"color": "#dde3ec"}},
+        paper_bgcolor="rgba(0,0,0,0)",
+        font={"color": "#dde3ec", "family": "Inter, sans-serif"},
+        height=380,
+        margin=dict(l=60, r=60, t=30, b=40),
+    )
+    return fig
+
+
 def make_gauge(value, baseline_value=None, color="#3a6ea5"):
     indicator_kwargs = dict(
         mode="gauge+number",
@@ -566,6 +614,15 @@ if not current.empty:
             "\"not significant\" next to a model means the 95% bootstrap confidence interval for that gap "
             "crosses zero — the color still reflects the point estimate, but treat it as directional, not proven."
         )
+
+# ----------------------------------------------------------------------------
+# Multi-metric comparison (radar)
+# ----------------------------------------------------------------------------
+if not current.empty and len(selected_models) >= 1:
+    st.markdown('<div class="section-title">Multi-metric comparison</div>', unsafe_allow_html=True)
+    with st.container(border=True):
+        st.plotly_chart(make_radar(current, selected_models), width="stretch")
+        st.caption("Smaller shape = less disparity across all three metrics at once. Values are absolute gaps.")
 
 # ----------------------------------------------------------------------------
 # Results table + download
