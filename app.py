@@ -25,29 +25,36 @@ st.markdown(
     }
 
     .eyebrow {
-        font-size: 0.72rem;
+        font-size: 0.74rem;
         font-weight: 700;
-        letter-spacing: 0.18em;
-        color: #6b8cae;
+        letter-spacing: 0.2em;
+        color: #c9a24b;
         text-transform: uppercase;
-        margin-bottom: 0.35rem;
+        margin-bottom: 0.4rem;
     }
 
     .hero-title {
-        font-size: 2.3rem;
-        font-weight: 700;
-        color: #e8edf4;
-        margin-bottom: 0.2rem;
-        line-height: 1.15;
-        border-left: 4px solid #3a6ea5;
-        padding-left: 0.7rem;
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #f2f5f9;
+        margin-bottom: 0.25rem;
+        line-height: 1.12;
+        border-left: 4px solid #c9a24b;
+        padding-left: 0.8rem;
     }
 
     .hero-subtitle {
-        color: #8a96a8;
-        font-size: 0.98rem;
-        margin-bottom: 1.6rem;
-        padding-left: 0.9rem;
+        color: #93a0b3;
+        font-size: 1rem;
+        margin-bottom: 1.1rem;
+        padding-left: 1rem;
+    }
+
+    .snapshot-inline {
+        color: #6b7688;
+        font-size: 0.76rem;
+        letter-spacing: 0.03em;
+        margin: 0 0 1.6rem 1rem;
     }
 
     .section-title {
@@ -125,32 +132,19 @@ st.markdown(
 
     .badge {
         display: inline-block;
-        padding: 0.3rem 0.75rem;
+        padding: 0.32rem 0.8rem;
         border-radius: 4px;
-        background: rgba(58, 110, 165, 0.14);
-        border: 1px solid rgba(58, 110, 165, 0.3);
-        color: #a9c2dc;
+        background: rgba(201, 162, 75, 0.1);
+        border: 1px solid rgba(201, 162, 75, 0.4);
+        color: #d9bd7a;
         font-size: 0.82rem;
         font-weight: 600;
         margin-bottom: 0.6rem;
         letter-spacing: 0.01em;
     }
 
-    .snapshot-note {
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        font-size: 0.72rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: #8a96a8;
-        margin-bottom: 0.9rem;
-    }
-    .snapshot-note .clock { color: #6b8cae; }
-
     .status-bar {
-        height: 3px;
+        height: 4px;
         margin: -1rem -1rem 0.9rem -1rem;
         border-radius: 8px 8px 0 0;
     }
@@ -162,28 +156,35 @@ st.markdown(
         letter-spacing: 0.06em;
         text-transform: uppercase;
         border-radius: 3px;
-        padding: 0.12rem 0.4rem;
+        padding: 0.14rem 0.45rem;
         margin-left: 0.5rem;
     }
     .best-tag {
-        color: #16a34a;
-        background: rgba(22, 163, 74, 0.12);
-        border: 1px solid rgba(22, 163, 74, 0.35);
+        color: #1a2e22;
+        background: #4ade80;
+        border: 1px solid #4ade80;
     }
     .warn-tag {
-        color: #dc2626;
-        background: rgba(220, 38, 38, 0.12);
-        border: 1px solid rgba(220, 38, 38, 0.35);
+        color: #2e1414;
+        background: #f87171;
+        border: 1px solid #f87171;
     }
     .flat-tag {
-        color: #8a96a8;
-        background: rgba(138, 150, 168, 0.12);
-        border: 1px solid rgba(138, 150, 168, 0.3);
+        color: #93a0b3;
+        background: rgba(147, 160, 179, 0.12);
+        border: 1px solid rgba(147, 160, 179, 0.28);
+    }
+
+    .inconclusive-mark {
+        font-size: 0.7rem;
+        color: #93a0b3;
+        border-bottom: 1px dotted #93a0b3;
+        cursor: help;
     }
 
     .ci-note {
         font-size: 0.74rem;
-        color: #74808f;
+        color: #6b7688;
         text-align: center;
         margin-top: -0.4rem;
     }
@@ -345,16 +346,19 @@ def metric_threshold(metric_key, priv_pos_rate):
 
 
 def status_color(value, ci_low, ci_high, green_cutoff, red_cutoff):
-    """Gray if the confidence interval is not statistically distinguishable
-    from zero disparity; otherwise green/amber/red based on magnitude."""
-    if not (np.isnan(ci_low) or np.isnan(ci_high)) and ci_low <= 0 <= ci_high:
-        return "#6b7280", "inconclusive"
+    """Color always reflects the magnitude of the point estimate (green/amber/
+    red). Statistical significance is reported separately as a flag, not by
+    flattening the color — a small gap can still be worth flagging as
+    directional even when the CI hasn't ruled out zero."""
     v = abs(value)
     if v < green_cutoff:
-        return "#22c55e", "fair"
-    if v < red_cutoff:
-        return "#d97706", "watch"
-    return "#dc2626", "flag"
+        color = "#22c55e"
+    elif v < red_cutoff:
+        color = "#d97706"
+    else:
+        color = "#dc2626"
+    inconclusive = not (np.isnan(ci_low) or np.isnan(ci_high)) and ci_low <= 0 <= ci_high
+    return color, inconclusive
 
 
 def make_gauge(value, baseline_value=None, color="#3a6ea5"):
@@ -427,16 +431,15 @@ metric_key = METRIC_KEYS[metric_name]
 # ----------------------------------------------------------------------------
 # Hero
 # ----------------------------------------------------------------------------
-st.markdown(
-    '<div class="snapshot-note"><span class="clock">&#9201;</span>'
-    "Point-in-time snapshot — not continuous monitoring</div>",
-    unsafe_allow_html=True,
-)
 st.markdown('<div class="eyebrow">Credit Risk &amp; Fairness Monitoring</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Fairness Monitor — Credit Scoring</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="hero-subtitle">Receives model predictions, true labels, and the protected attribute. '
     "Never sees the input features.</div>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    '<div class="snapshot-inline">Point-in-time comparison of two model runs — not a continuous production feed.</div>',
     unsafe_allow_html=True,
 )
 
@@ -511,7 +514,7 @@ if not current.empty:
                 if not row.empty:
                     value = row[metric_key].values[0]
                     ci_low, ci_high = row[f"{metric_key.split('_')[0]}_ci"].values[0]
-                    color, status = status_color(value, ci_low, ci_high, green_cut, red_cut)
+                    color, inconclusive = status_color(value, ci_low, ci_high, green_cut, red_cut)
                     st.markdown(f'<div class="status-bar" style="background:{color};"></div>', unsafe_allow_html=True)
 
                     tag_html = ""
@@ -519,16 +522,24 @@ if not current.empty:
                         base_row = baseline_current[baseline_current["model"] == model]
                         if not base_row.empty:
                             base_val = base_row[metric_key].values[0]
-                            if status == "inconclusive":
-                                tag_html = '<span class="flat-tag">Inconclusive</span>'
-                            elif abs(value) < abs(base_val):
+                            if abs(value) < abs(base_val):
                                 tag_html = '<span class="best-tag">Improved</span>'
                             elif abs(value) > abs(base_val):
                                 tag_html = '<span class="warn-tag">Regressed</span>'
-                    elif status == "inconclusive":
-                        tag_html = '<span class="flat-tag">Inconclusive</span>'
+                            else:
+                                tag_html = '<span class="flat-tag">No change</span>'
 
-                    st.markdown(f'<span style="font-weight:600;">{model}</span>{tag_html}', unsafe_allow_html=True)
+                    ci_html = ""
+                    if inconclusive:
+                        ci_html = (
+                            f' <span class="inconclusive-mark" title="95% CI [{ci_low:.3f}, {ci_high:.3f}] '
+                            'crosses zero">not significant</span>'
+                        )
+
+                    st.markdown(
+                        f'<span style="font-weight:600;">{model}</span>{tag_html}{ci_html}',
+                        unsafe_allow_html=True,
+                    )
 
                     baseline_value = None
                     if dataset_choice != baseline_ds:
@@ -539,27 +550,21 @@ if not current.empty:
                         make_gauge(value, baseline_value=baseline_value, color=color),
                         width="stretch",
                     )
-                    if not (np.isnan(ci_low) or np.isnan(ci_high)):
-                        st.markdown(
-                            f'<div class="ci-note">95% CI: [{ci_low:.3f}, {ci_high:.3f}]</div>',
-                            unsafe_allow_html=True,
-                        )
                 else:
                     st.info(f"No data for {model}.")
 
-    if metric_key == "SP_diff":
+    threshold_note = (
+        f"Green cutoff ({green_cut:.3f}) follows the four-fifths (80%) adverse-impact rule, translated to an "
+        "absolute gap using the privileged group's observed rate."
+        if metric_key == "SP_diff"
+        else f"{HEURISTIC_GREEN:.2f} / {HEURISTIC_RED:.2f} are literature-heuristic cutoffs — no metric-specific "
+        "regulatory standard exists for this one."
+    )
+    with st.expander("Methodology: thresholds & significance"):
+        st.caption(threshold_note + " See *Limitations and scope* below for the full caveat.")
         st.caption(
-            f"Green cutoff ({green_cut:.3f}) approximates the four-fifths (80%) adverse-impact rule from EEOC "
-            "guidance, translated to an absolute gap using the privileged group's observed approval rate. "
-            "That rule comes from US employment law, not lending regulation — treat it as a practical "
-            "reference point, not a legal standard. Gray = the 95% confidence interval crosses zero, "
-            "meaning the gap is not statistically distinguishable from no disparity at this sample size."
-        )
-    else:
-        st.caption(
-            f"No official regulatory threshold exists for this metric. {HEURISTIC_GREEN:.2f} / {HEURISTIC_RED:.2f} "
-            "are common heuristic cutoffs from fairness literature, not a legal requirement. Gray = the 95% "
-            "confidence interval crosses zero (not statistically distinguishable from no disparity)."
+            "\"not significant\" next to a model means the 95% bootstrap confidence interval for that gap "
+            "crosses zero — the color still reflects the point estimate, but treat it as directional, not proven."
         )
 
 # ----------------------------------------------------------------------------
@@ -575,7 +580,7 @@ with st.container(border=True):
     for _, r in display_df.iterrows():
         ci_low, ci_high = r[f"{metric_key.split('_')[0]}_ci"]
         g_cut, r_cut = metric_threshold(metric_key, r["priv_pos_rate"])
-        dot_color, _ = status_color(r[metric_key], ci_low, ci_high, g_cut, r_cut)
+        dot_color, _inconclusive = status_color(r[metric_key], ci_low, ci_high, g_cut, r_cut)
         rows_html += (
             "<tr>"
             f"<td><span class='rt-dot' style='background:{dot_color};'></span>{r['model']}</td>"
