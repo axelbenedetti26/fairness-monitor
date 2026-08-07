@@ -145,6 +145,76 @@ st.markdown(
         margin-bottom: 0.6rem;
         letter-spacing: 0.01em;
     }
+
+    /* live status indicator */
+    .live-status {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6ea88a;
+        margin-bottom: 0.9rem;
+    }
+    .live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #22c55e;
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+        animation: livePulse 1.8s infinite;
+    }
+    @keyframes livePulse {
+        0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+        70%  { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+
+    /* colored status strip rendered as the first element inside a gauge card */
+    .status-bar {
+        height: 3px;
+        margin: -1rem -1rem 0.9rem -1rem;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .best-tag {
+        display: inline-block;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #16a34a;
+        background: rgba(22, 163, 74, 0.12);
+        border: 1px solid rgba(22, 163, 74, 0.35);
+        border-radius: 3px;
+        padding: 0.12rem 0.4rem;
+        margin-left: 0.5rem;
+    }
+
+    /* custom results table */
+    .rt-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .rt-table th {
+        text-align: right;
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #74808f;
+        font-weight: 600;
+        padding: 0.5rem 0.7rem;
+        border-bottom: 1px solid #263140;
+    }
+    .rt-table th:first-child, .rt-table th:nth-child(2) { text-align: left; }
+    .rt-table td {
+        text-align: right;
+        padding: 0.55rem 0.7rem;
+        border-bottom: 1px solid #1a212c;
+        font-variant-numeric: tabular-nums;
+    }
+    .rt-table td:first-child, .rt-table td:nth-child(2) { text-align: left; }
+    .rt-table tr:hover td { background: rgba(58, 110, 165, 0.06); }
+    .rt-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 0.4rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -235,7 +305,7 @@ def gauge_color(value):
     return "#ef4444"
 
 
-def make_gauge(value, title, baseline_value=None):
+def make_gauge(value, baseline_value=None):
     color = gauge_color(value)
     indicator_kwargs = dict(
         mode="gauge+number",
@@ -265,11 +335,10 @@ def make_gauge(value, title, baseline_value=None):
         }
     fig = go.Figure(go.Indicator(**indicator_kwargs))
     fig.update_layout(
-        height=230,
-        margin=dict(l=20, r=20, t=30, b=10),
+        height=210,
+        margin=dict(l=20, r=20, t=10, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         font={"color": "#dde3ec", "family": "Inter, sans-serif"},
-        title={"text": title, "font": {"size": 16}},
     )
     return fig
 
@@ -309,6 +378,10 @@ metric_key = METRIC_KEYS[metric_name]
 # ----------------------------------------------------------------------------
 # Hero
 # ----------------------------------------------------------------------------
+st.markdown(
+    '<div class="live-status"><span class="live-dot"></span>Monitoring active</div>',
+    unsafe_allow_html=True,
+)
 st.markdown('<div class="eyebrow">Credit Risk &amp; Fairness Monitoring</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Fairness Monitor — Credit Scoring</div>', unsafe_allow_html=True)
 st.markdown(
@@ -373,6 +446,13 @@ if dataset_choice != baseline_ds and total_count > 0:
 # ----------------------------------------------------------------------------
 current = results_df[results_df["dataset"] == dataset_choice]
 baseline_current = results_df[results_df["dataset"] == baseline_ds]
+
+best_model = None
+if not current.empty and len(selected_models) > 1:
+    valid = current[current["model"].isin(selected_models)]
+    if not valid.empty:
+        best_model = valid.loc[valid[metric_key].abs().idxmin(), "model"]
+
 if not current.empty:
     cols = st.columns(len(selected_models)) if selected_models else []
     for col, model in zip(cols, selected_models):
@@ -381,13 +461,20 @@ if not current.empty:
             with st.container(border=True):
                 if not row.empty:
                     value = row[metric_key].values[0]
+                    color = gauge_color(value)
+                    st.markdown(f'<div class="status-bar" style="background:{color};"></div>', unsafe_allow_html=True)
+                    tag_html = '<span class="best-tag">Most fair</span>' if model == best_model else ""
+                    st.markdown(
+                        f'<span style="font-weight:600;">{model}</span>{tag_html}',
+                        unsafe_allow_html=True,
+                    )
                     baseline_value = None
                     if dataset_choice != baseline_ds:
                         base_row = baseline_current[baseline_current["model"] == model]
                         if not base_row.empty:
                             baseline_value = base_row[metric_key].values[0]
                     st.plotly_chart(
-                        make_gauge(value, model, baseline_value=baseline_value),
+                        make_gauge(value, baseline_value=baseline_value),
                         use_container_width=True,
                     )
                 else:
@@ -401,7 +488,26 @@ with st.container(border=True):
     display_df = results_df.copy()
     for col in ["SP_diff", "TPR_diff", "FPR_diff"]:
         display_df[col] = display_df[col].round(4)
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+    rows_html = ""
+    for _, r in display_df.iterrows():
+        dot_color = gauge_color(r[metric_key])
+        rows_html += (
+            "<tr>"
+            f"<td><span class='rt-dot' style='background:{dot_color};'></span>{r['model']}</td>"
+            f"<td>{r['dataset']}</td>"
+            f"<td>{r['SP_diff']:.4f}</td>"
+            f"<td>{r['TPR_diff']:.4f}</td>"
+            f"<td>{r['FPR_diff']:.4f}</td>"
+            "</tr>"
+        )
+    table_html = (
+        "<table class='rt-table'><thead><tr>"
+        "<th>Model</th><th>Dataset</th><th>SP diff</th><th>TPR diff</th><th>FPR diff</th>"
+        f"</tr></thead><tbody>{rows_html}</tbody></table>"
+    )
+    st.markdown(table_html, unsafe_allow_html=True)
+    st.caption(f"Row color reflects the selected metric ({metric_name}).")
 
     csv_bytes = display_df.to_csv(index=False).encode("utf-8")
     st.download_button("Download report (CSV)", csv_bytes, file_name="fairness_report.csv", mime="text/csv")
