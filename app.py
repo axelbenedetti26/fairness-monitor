@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ----------------------------------------------------------------------------
-# Custom styling (fonts, hero text, cards, animated step tracker)
+# Custom styling
 # ----------------------------------------------------------------------------
 st.markdown(
     """
@@ -58,7 +58,6 @@ st.markdown(
         color: #dde3ec;
     }
 
-    /* cards: quiet fade in on load, subtle lift on hover (no bounce/tilt) */
     [data-testid="stVerticalBlockBorderWrapper"] {
         border-radius: 8px !important;
         animation: fadeIn 0.4s ease-in-out;
@@ -75,13 +74,6 @@ st.markdown(
         to   { opacity: 1; transform: translateY(0); }
     }
 
-    @keyframes pulse {
-        0%   { box-shadow: 0 0 0 0 rgba(58, 110, 165, 0.5); }
-        70%  { box-shadow: 0 0 0 6px rgba(58, 110, 165, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(58, 110, 165, 0); }
-    }
-
-    /* step tracker */
     .step-track {
         display: flex;
         align-items: flex-start;
@@ -114,12 +106,10 @@ st.markdown(
         border-radius: 50%;
         background: #1a212c;
         border: 2px solid #2a3644;
-        transition: all 0.3s ease;
     }
     .step.active .dot {
         background: #3a6ea5;
         border-color: #3a6ea5;
-        animation: pulse 2.4s infinite;
     }
     .step .label {
         font-size: 0.78rem;
@@ -146,54 +136,58 @@ st.markdown(
         letter-spacing: 0.01em;
     }
 
-    /* live status indicator */
-    .live-status {
+    .snapshot-note {
         display: flex;
         align-items: center;
         gap: 0.45rem;
         font-size: 0.72rem;
         font-weight: 600;
-        letter-spacing: 0.1em;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #6ea88a;
+        color: #8a96a8;
         margin-bottom: 0.9rem;
     }
-    .live-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: #22c55e;
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
-        animation: livePulse 1.8s infinite;
-    }
-    @keyframes livePulse {
-        0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
-        70%  { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-    }
+    .snapshot-note .clock { color: #6b8cae; }
 
-    /* colored status strip rendered as the first element inside a gauge card */
     .status-bar {
         height: 3px;
         margin: -1rem -1rem 0.9rem -1rem;
         border-radius: 8px 8px 0 0;
     }
 
-    .best-tag {
+    .best-tag, .warn-tag, .flat-tag {
         display: inline-block;
         font-size: 0.68rem;
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: #16a34a;
-        background: rgba(22, 163, 74, 0.12);
-        border: 1px solid rgba(22, 163, 74, 0.35);
         border-radius: 3px;
         padding: 0.12rem 0.4rem;
         margin-left: 0.5rem;
     }
+    .best-tag {
+        color: #16a34a;
+        background: rgba(22, 163, 74, 0.12);
+        border: 1px solid rgba(22, 163, 74, 0.35);
+    }
+    .warn-tag {
+        color: #dc2626;
+        background: rgba(220, 38, 38, 0.12);
+        border: 1px solid rgba(220, 38, 38, 0.35);
+    }
+    .flat-tag {
+        color: #8a96a8;
+        background: rgba(138, 150, 168, 0.12);
+        border: 1px solid rgba(138, 150, 168, 0.3);
+    }
 
-    /* custom results table */
+    .ci-note {
+        font-size: 0.74rem;
+        color: #74808f;
+        text-align: center;
+        margin-top: -0.4rem;
+    }
+
     .rt-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
     .rt-table th {
         text-align: right;
@@ -225,6 +219,7 @@ st.markdown(
 # ----------------------------------------------------------------------------
 DEFAULT_PRED_PATH = "monitor_predictions.csv"
 DEFAULT_SHAP_PATH = "shap_importance.csv"
+N_BOOT = 200  # bootstrap resamples for confidence intervals
 
 ATTR_CONFIG = {
     "Sex": {
@@ -255,6 +250,12 @@ METRIC_KEYS = {
     "FPR diff (EOd)": "FPR_diff",
 }
 
+# Fixed heuristic thresholds used for TPR diff / FPR diff, where no single
+# regulatory numeric standard exists. These are common cutoffs seen in the
+# fairness literature, not a legal requirement.
+HEURISTIC_GREEN = 0.03
+HEURISTIC_RED = 0.07
+
 
 # ----------------------------------------------------------------------------
 # Data loading
@@ -269,44 +270,94 @@ def load_default_data():
     return preds, shap_df
 
 
+def _rates(y_true, y_pred):
+    pos_rate = y_pred.mean() if len(y_pred) else np.nan
+    pos_mask = y_true == 1
+    neg_mask = y_true == 0
+    tpr = y_pred[pos_mask].mean() if pos_mask.sum() else np.nan
+    fpr = y_pred[neg_mask].mean() if neg_mask.sum() else np.nan
+    return pos_rate, tpr, fpr
+
+
 def fairness_metrics(df, y_true_col, y_pred_col, group_col, priv_code, under_code):
     """Statistical parity, TPR and FPR differences between privileged and
-    underprivileged groups. Positive value = underprivileged group is worse off."""
-    results = {}
-    for label, code in [("priv", priv_code), ("under", under_code)]:
-        sub = df[df[group_col] == code]
-        y_true = sub[y_true_col]
-        y_pred = sub[y_pred_col]
+    underprivileged groups. Positive value = underprivileged group is worse off.
+    Also returns the privileged group's raw positive rate, needed to translate
+    the four-fifths (80%) adverse-impact rule into an absolute-difference
+    threshold for statistical parity."""
+    priv = df[df[group_col].astype(str) == str(priv_code)]
+    under = df[df[group_col].astype(str) == str(under_code)]
 
-        pos_rate = (y_pred == 1).mean() if len(sub) else np.nan
-
-        pos_mask = y_true == 1
-        neg_mask = y_true == 0
-        tpr = (y_pred[pos_mask] == 1).mean() if pos_mask.sum() else np.nan
-        fpr = (y_pred[neg_mask] == 1).mean() if neg_mask.sum() else np.nan
-
-        results[f"pos_rate_{label}"] = pos_rate
-        results[f"TPR_{label}"] = tpr
-        results[f"FPR_{label}"] = fpr
+    priv_pos, priv_tpr, priv_fpr = _rates(priv[y_true_col].values, priv[y_pred_col].values)
+    under_pos, under_tpr, under_fpr = _rates(under[y_true_col].values, under[y_pred_col].values)
 
     return {
-        "SP_diff": results["pos_rate_under"] - results["pos_rate_priv"],
-        "TPR_diff": results["TPR_under"] - results["TPR_priv"],
-        "FPR_diff": results["FPR_under"] - results["FPR_priv"],
+        "SP_diff": under_pos - priv_pos,
+        "TPR_diff": under_tpr - priv_tpr,
+        "FPR_diff": under_fpr - priv_fpr,
+        "priv_pos_rate": priv_pos,
     }
 
 
-def gauge_color(value):
+def bootstrap_ci(df, y_true_col, y_pred_col, group_col, priv_code, under_code, n_boot=N_BOOT, seed=42):
+    """95% bootstrap confidence interval for each metric, resampling each
+    group independently with replacement. Used to flag when an observed gap
+    is not statistically distinguishable from zero."""
+    rng = np.random.default_rng(seed)
+    priv = df[df[group_col].astype(str) == str(priv_code)]
+    under = df[df[group_col].astype(str) == str(under_code)]
+
+    yt_p, yp_p = priv[y_true_col].values, priv[y_pred_col].values
+    yt_u, yp_u = under[y_true_col].values, under[y_pred_col].values
+    n_p, n_u = len(yt_p), len(yt_u)
+
+    sp_boot, tpr_boot, fpr_boot = [], [], []
+    if n_p > 0 and n_u > 0:
+        for _ in range(n_boot):
+            idx_p = rng.integers(0, n_p, n_p)
+            idx_u = rng.integers(0, n_u, n_u)
+            pp, tp, fp = _rates(yt_p[idx_p], yp_p[idx_p])
+            pu, tu, fu = _rates(yt_u[idx_u], yp_u[idx_u])
+            sp_boot.append(pu - pp)
+            tpr_boot.append(tu - tp)
+            fpr_boot.append(fu - fp)
+
+    def ci(vals):
+        arr = np.array(vals, dtype=float)
+        arr = arr[~np.isnan(arr)]
+        if len(arr) == 0:
+            return (np.nan, np.nan)
+        return float(np.percentile(arr, 2.5)), float(np.percentile(arr, 97.5))
+
+    return {"SP_ci": ci(sp_boot), "TPR_ci": ci(tpr_boot), "FPR_ci": ci(fpr_boot)}
+
+
+def metric_threshold(metric_key, priv_pos_rate):
+    """Return (green_cutoff, red_cutoff) for a metric. For statistical parity,
+    the green cutoff approximates the four-fifths (80%) adverse-impact rule
+    translated into an absolute-difference threshold using the privileged
+    group's observed positive rate. For TPR/FPR diff, no equivalent
+    regulatory rule exists, so fixed literature-heuristic cutoffs are used."""
+    if metric_key == "SP_diff" and priv_pos_rate and not np.isnan(priv_pos_rate):
+        green = 0.2 * priv_pos_rate
+        return green, green * 1.75
+    return HEURISTIC_GREEN, HEURISTIC_RED
+
+
+def status_color(value, ci_low, ci_high, green_cutoff, red_cutoff):
+    """Gray if the confidence interval is not statistically distinguishable
+    from zero disparity; otherwise green/amber/red based on magnitude."""
+    if not (np.isnan(ci_low) or np.isnan(ci_high)) and ci_low <= 0 <= ci_high:
+        return "#6b7280", "inconclusive"
     v = abs(value)
-    if v < 0.03:
-        return "#22c55e"
-    if v < 0.07:
-        return "#f59e0b"
-    return "#ef4444"
+    if v < green_cutoff:
+        return "#22c55e", "fair"
+    if v < red_cutoff:
+        return "#d97706", "watch"
+    return "#dc2626", "flag"
 
 
-def make_gauge(value, baseline_value=None):
-    color = gauge_color(value)
+def make_gauge(value, baseline_value=None, color="#3a6ea5"):
     indicator_kwargs = dict(
         mode="gauge+number",
         value=abs(value),
@@ -316,14 +367,12 @@ def make_gauge(value, baseline_value=None):
             "bar": {"color": color, "thickness": 0.35},
             "bgcolor": "rgba(0,0,0,0)",
             "steps": [
-                {"range": [0, 0.03], "color": "rgba(34,197,94,0.12)"},
-                {"range": [0.03, 0.07], "color": "rgba(217,119,6,0.12)"},
-                {"range": [0.07, 0.15], "color": "rgba(220,38,38,0.12)"},
+                {"range": [0, 0.03], "color": "rgba(34,197,94,0.10)"},
+                {"range": [0.03, 0.07], "color": "rgba(217,119,6,0.10)"},
+                {"range": [0.07, 0.15], "color": "rgba(220,38,38,0.10)"},
             ],
         },
     )
-    # When comparing against the biased baseline, show a real delta with an
-    # up/down arrow — smaller disparity than baseline is an improvement (green).
     if baseline_value is not None:
         indicator_kwargs["mode"] = "gauge+number+delta"
         indicator_kwargs["delta"] = {
@@ -379,7 +428,8 @@ metric_key = METRIC_KEYS[metric_name]
 # Hero
 # ----------------------------------------------------------------------------
 st.markdown(
-    '<div class="live-status"><span class="live-dot"></span>Monitoring active</div>',
+    '<div class="snapshot-note"><span class="clock">&#9201;</span>'
+    "Point-in-time snapshot — not continuous monitoring</div>",
     unsafe_allow_html=True,
 )
 st.markdown('<div class="eyebrow">Credit Risk &amp; Fairness Monitoring</div>', unsafe_allow_html=True)
@@ -408,7 +458,7 @@ with st.container(border=True):
     st.markdown(html, unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------------
-# Compute results
+# Compute results (point estimates + bootstrap CI + dynamic thresholds)
 # ----------------------------------------------------------------------------
 rows = []
 for model in selected_models:
@@ -417,7 +467,8 @@ for model in selected_models:
         if sub.empty:
             continue
         m = fairness_metrics(sub, "y_true", "y_pred", attr["column"], attr["priv_code"], attr["under_code"])
-        rows.append({"model": model, "dataset": ds, **m})
+        ci = bootstrap_ci(sub, "y_true", "y_pred", attr["column"], attr["priv_code"], attr["under_code"])
+        rows.append({"model": model, "dataset": ds, **m, **ci})
 
 results_df = pd.DataFrame(rows)
 
@@ -434,12 +485,15 @@ if len(available_datasets) > 1:
                 improved_count += 1
 
 st.markdown(
-    f'<div class="section-title">The monitor detects disparity in {len(selected_models)} model'
+    f'<div class="section-title">The monitor detects disparity — and regression — across {len(selected_models)} model'
     f'{"s" if len(selected_models) != 1 else ""}</div>',
     unsafe_allow_html=True,
 )
 if dataset_choice != baseline_ds and total_count > 0:
-    st.caption(f"{improved_count} of {total_count} models improved on this metric after FairFinGAN cleaning.")
+    st.caption(
+        f"{improved_count} of {total_count} models improved on this metric after FairFinGAN cleaning; "
+        f"{total_count - improved_count} regressed. Both are reported — this tool is built to catch either."
+    )
 
 # ----------------------------------------------------------------------------
 # Gauges
@@ -447,13 +501,8 @@ if dataset_choice != baseline_ds and total_count > 0:
 current = results_df[results_df["dataset"] == dataset_choice]
 baseline_current = results_df[results_df["dataset"] == baseline_ds]
 
-best_model = None
-if not current.empty and len(selected_models) > 1:
-    valid = current[current["model"].isin(selected_models)]
-    if not valid.empty:
-        best_model = valid.loc[valid[metric_key].abs().idxmin(), "model"]
-
 if not current.empty:
+    green_cut, red_cut = metric_threshold(metric_key, current["priv_pos_rate"].mean())
     cols = st.columns(len(selected_models)) if selected_models else []
     for col, model in zip(cols, selected_models):
         row = current[current["model"] == model]
@@ -461,24 +510,57 @@ if not current.empty:
             with st.container(border=True):
                 if not row.empty:
                     value = row[metric_key].values[0]
-                    color = gauge_color(value)
+                    ci_low, ci_high = row[f"{metric_key.split('_')[0]}_ci"].values[0]
+                    color, status = status_color(value, ci_low, ci_high, green_cut, red_cut)
                     st.markdown(f'<div class="status-bar" style="background:{color};"></div>', unsafe_allow_html=True)
-                    tag_html = '<span class="best-tag">Most fair</span>' if model == best_model else ""
-                    st.markdown(
-                        f'<span style="font-weight:600;">{model}</span>{tag_html}',
-                        unsafe_allow_html=True,
-                    )
+
+                    tag_html = ""
+                    if dataset_choice != baseline_ds:
+                        base_row = baseline_current[baseline_current["model"] == model]
+                        if not base_row.empty:
+                            base_val = base_row[metric_key].values[0]
+                            if status == "inconclusive":
+                                tag_html = '<span class="flat-tag">Inconclusive</span>'
+                            elif abs(value) < abs(base_val):
+                                tag_html = '<span class="best-tag">Improved</span>'
+                            elif abs(value) > abs(base_val):
+                                tag_html = '<span class="warn-tag">Regressed</span>'
+                    elif status == "inconclusive":
+                        tag_html = '<span class="flat-tag">Inconclusive</span>'
+
+                    st.markdown(f'<span style="font-weight:600;">{model}</span>{tag_html}', unsafe_allow_html=True)
+
                     baseline_value = None
                     if dataset_choice != baseline_ds:
                         base_row = baseline_current[baseline_current["model"] == model]
                         if not base_row.empty:
                             baseline_value = base_row[metric_key].values[0]
                     st.plotly_chart(
-                        make_gauge(value, baseline_value=baseline_value),
-                        use_container_width=True,
+                        make_gauge(value, baseline_value=baseline_value, color=color),
+                        width="stretch",
                     )
+                    if not (np.isnan(ci_low) or np.isnan(ci_high)):
+                        st.markdown(
+                            f'<div class="ci-note">95% CI: [{ci_low:.3f}, {ci_high:.3f}]</div>',
+                            unsafe_allow_html=True,
+                        )
                 else:
                     st.info(f"No data for {model}.")
+
+    if metric_key == "SP_diff":
+        st.caption(
+            f"Green cutoff ({green_cut:.3f}) approximates the four-fifths (80%) adverse-impact rule from EEOC "
+            "guidance, translated to an absolute gap using the privileged group's observed approval rate. "
+            "That rule comes from US employment law, not lending regulation — treat it as a practical "
+            "reference point, not a legal standard. Gray = the 95% confidence interval crosses zero, "
+            "meaning the gap is not statistically distinguishable from no disparity at this sample size."
+        )
+    else:
+        st.caption(
+            f"No official regulatory threshold exists for this metric. {HEURISTIC_GREEN:.2f} / {HEURISTIC_RED:.2f} "
+            "are common heuristic cutoffs from fairness literature, not a legal requirement. Gray = the 95% "
+            "confidence interval crosses zero (not statistically distinguishable from no disparity)."
+        )
 
 # ----------------------------------------------------------------------------
 # Results table + download
@@ -491,7 +573,9 @@ with st.container(border=True):
 
     rows_html = ""
     for _, r in display_df.iterrows():
-        dot_color = gauge_color(r[metric_key])
+        ci_low, ci_high = r[f"{metric_key.split('_')[0]}_ci"]
+        g_cut, r_cut = metric_threshold(metric_key, r["priv_pos_rate"])
+        dot_color, _ = status_color(r[metric_key], ci_low, ci_high, g_cut, r_cut)
         rows_html += (
             "<tr>"
             f"<td><span class='rt-dot' style='background:{dot_color};'></span>{r['model']}</td>"
@@ -507,9 +591,9 @@ with st.container(border=True):
         f"</tr></thead><tbody>{rows_html}</tbody></table>"
     )
     st.markdown(table_html, unsafe_allow_html=True)
-    st.caption(f"Row color reflects the selected metric ({metric_name}).")
+    st.caption(f"Row color reflects the selected metric ({metric_name}), including the confidence-interval check.")
 
-    csv_bytes = display_df.to_csv(index=False).encode("utf-8")
+    csv_bytes = display_df.drop(columns=["priv_pos_rate", "SP_ci", "TPR_ci", "FPR_ci"]).to_csv(index=False).encode("utf-8")
     st.download_button("Download report (CSV)", csv_bytes, file_name="fairness_report.csv", mime="text/csv")
 
 # ----------------------------------------------------------------------------
@@ -517,8 +601,29 @@ with st.container(border=True):
 # ----------------------------------------------------------------------------
 if shap_df is not None:
     with st.expander("View proxy check (SHAP)"):
-        st.dataframe(shap_df, use_container_width=True, hide_index=True)
+        st.dataframe(shap_df, width="stretch", hide_index=True)
         st.caption("Features with high importance and high correlation with the protected attribute are proxy candidates.")
 elif custom_data:
     with st.expander("View proxy check (SHAP)"):
         st.info("SHAP proxy check is only available for the preloaded experiment data, not for uploaded CSVs.")
+
+# ----------------------------------------------------------------------------
+# Limitations — stated explicitly rather than left implicit
+# ----------------------------------------------------------------------------
+with st.expander("Limitations and scope"):
+    st.markdown(
+        """
+- **Bias is synthetically injected** (15% label flipping), not organically occurring. This demonstrates the
+  monitor's sensitivity to a known, controlled pattern — it has not been validated against real-world,
+  naturally-arising bias, which is typically subtler and structurally different.
+- **This is a point-in-time comparison**, not continuous production monitoring. It compares two static
+  datasets (biased vs. synthetic); it does not track drift over time.
+- **Thresholds are a practical reference, not a legal standard.** The four-fifths rule (statistical parity)
+  comes from US employment discrimination law, not lending regulation. TPR/FPR diff cutoffs are literature
+  heuristics with no official regulatory backing.
+- **Confidence intervals are bootstrap estimates** (200 resamples) computed from the available predictions,
+  not a substitute for a full statistical power analysis.
+- **No access control, audit trail, or versioning.** This is a proof-of-concept dashboard, not a
+  production model-risk-management system.
+        """
+    )
