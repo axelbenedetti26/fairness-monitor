@@ -88,6 +88,14 @@ def load_predictions(): return pd.read_csv(PRED_PATH)
 def load_shap():
     try: return pd.read_csv(SHAP_PATH)
     except FileNotFoundError: return None
+@st.cache_data
+def load_allcond():
+    try: return pd.read_csv(ALLCOND_PATH)
+    except FileNotFoundError: return None
+@st.cache_data
+def load_rw():
+    try: return pd.read_csv(RW_PATH)
+    except FileNotFoundError: return None
 
 def _rates(y_true, y_pred):
     pos = y_pred.mean() if len(y_pred) else np.nan
@@ -237,8 +245,49 @@ elif page == "Compare":
         st.caption(f"On {metric_pick} after mitigation: **{fairest}** is the fairest, **{worst}** the least fair.")
 elif page == "Overview":
     st.markdown('<div class="section-title">Overview</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Two methods, two metrics.</div>', unsafe_allow_html=True)
-    st.caption("Coming in a later step.")
+    st.markdown('<div class="section-sub">Both mitigation methods, both metrics, across all models (10 seeds).</div>', unsafe_allow_html=True)
+
+    ac = load_allcond(); rw = load_rw()
+    if ac is None or rw is None:
+        st.info("Overview data not available.")
+    else:
+        rw = rw.copy()
+        rw["EOd_max"] = np.maximum(rw["TPR_diff (EOd)"].abs(), rw["FPR_diff (EOd)"].abs())
+        ac2 = ac.copy()
+
+        def delta(src, cond, metric):
+            vals = []
+            for m in MODEL_ORDER:
+                o = ac2[(ac2.model == m) & (ac2.dataset == "original")][metric].abs().mean()
+                s = src[(src.model == m) & (src.dataset == cond)][metric].abs()
+                vals.append((s.mean() - o) if len(s) else np.nan)
+            return vals
+
+        cols_data = {
+            "FairFinGAN<br>SP":  delta(ac2, "synthetic", "statistical_parity_diff"),
+            "FairFinGAN<br>EOd": delta(ac2, "synthetic", "EOd_max"),
+            "Reweighting<br>SP":  delta(rw, "reweighed", "statistical_parity_diff"),
+            "Reweighting<br>EOd": delta(rw, "reweighed", "EOd_max"),
+        }
+        z = [[cols_data[c][i] for c in cols_data] for i in range(len(MODEL_ORDER))]
+        text = [[("" if np.isnan(v) else f"{v:+.3f}") for v in row] for row in z]
+
+        fig = go.Figure(go.Heatmap(
+            z=z, x=list(cols_data.keys()), y=MODEL_ORDER,
+            text=text, texttemplate="%{text}", textfont={"size": 12},
+            colorscale=[[0, "#2b5c8a"], [0.5, "#f4f6f9"], [1, "#c0504d"]],
+            zmid=0, colorbar={"title": "Δ vs<br>original"},
+            hoverongaps=False,
+        ))
+        fig.update_layout(
+            height=460, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font={"color": "#52606e", "family": "Inter"},
+            yaxis={"autorange": "reversed"},
+            margin=dict(l=10, r=10, t=20, b=10),
+        )
+        st.markdown('<div class="block-h">Effect of each method on each metric</div>', unsafe_allow_html=True)
+        st.caption("Blue = fairer after mitigation · Red = less fair. Reweighting improves statistical parity on tree models but worsens equalized odds on the same models.")
+        st.plotly_chart(fig, use_container_width=True)
 elif page == "Methodology":
     st.markdown('<div class="section-title">Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">How the experiment was built.</div>', unsafe_allow_html=True)
