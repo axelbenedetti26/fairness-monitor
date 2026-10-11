@@ -321,6 +321,40 @@ elif page == "Overview":
         st.markdown('<div class="block-h">Effect of each method on each metric</div>', unsafe_allow_html=True)
         st.caption("Blue = fairer after mitigation · Red = less fair. Reweighting improves statistical parity on tree models but worsens equalized odds on the same models.")
         st.plotly_chart(fig, use_container_width=True)
+
+        # ---- fairness-accuracy trade-off ----
+        pts = []
+        for m in MODEL_ORDER:
+            o = ac2[(ac2.model == m) & (ac2.dataset == "original")]
+            s = ac2[(ac2.model == m) & (ac2.dataset == "synthetic")]
+            if len(o) and len(s):
+                pts.append({
+                    "model": m,
+                    "ox": o["statistical_parity_diff"].abs().mean(), "oy": o["accuracy"].mean(),
+                    "sx": s["statistical_parity_diff"].abs().mean(), "sy": s["accuracy"].mean(),
+                })
+        tf = pd.DataFrame(pts)
+
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=tf["ox"], y=tf["oy"], mode="markers+text",
+                                  text=tf["model"], textposition="top center",
+                                  name="Original", marker={"color": "#9fb6cc", "size": 11},
+                                  textfont={"size": 9, "color": "#8795a6"}))
+        fig2.add_trace(go.Scatter(x=tf["sx"], y=tf["sy"], mode="markers+text",
+                                  text=tf["model"], textposition="bottom center",
+                                  name="After FairFinGAN", marker={"color": "#2b5c8a", "size": 11},
+                                  textfont={"size": 9, "color": "#2b5c8a"}))
+        fig2.update_layout(
+            height=460, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font={"color": "#52606e", "family": "Inter"},
+            legend={"orientation": "h", "y": 1.08},
+            xaxis={"title": "|Statistical parity|  (left = fairer)", "gridcolor": "#eef1f5"},
+            yaxis={"title": "Accuracy  (higher = better)", "gridcolor": "#eef1f5"},
+            margin=dict(l=10, r=10, t=30, b=10),
+        )
+        st.markdown('<div class="block-h" style="margin-top:1.6rem;">Fairness vs accuracy trade-off</div>', unsafe_allow_html=True)
+        st.caption("Each model moves from its original (grey) to its mitigated (blue) position. FairFinGAN tends to push models toward more fairness at some cost in accuracy.")
+        st.plotly_chart(fig2, use_container_width=True)
 elif page == "Methodology":
     st.markdown('<div class="section-title">Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">How the experiment was built.</div>', unsafe_allow_html=True)
