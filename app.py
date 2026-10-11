@@ -276,6 +276,35 @@ elif page == "Compare":
 
         fairest = rank.iloc[0]["model"]; worst = rank.iloc[-1]["model"]
         st.caption(f"On {metric_pick} after mitigation: **{fairest}** is the fairest, **{worst}** the least fair.")
+
+        # ---- seed-level variability (10 seeds) ----
+        ac = load_allcond()
+        if ac is not None:
+            metric_col = {"SP": "statistical_parity_diff", "TPR": "TPR_diff (EOd)", "FPR": "FPR_diff (EOd)"}[metric_pick]
+            figv = go.Figure()
+            for m in sel_models:
+                seedvals = ac[(ac.model == m) & (ac.dataset == "synthetic")][metric_col].abs()
+                if len(seedvals):
+                    figv.add_trace(go.Scatter(
+                        x=seedvals.values, y=[m] * len(seedvals),
+                        mode="markers", marker={"color": "#2b5c8a", "size": 7, "opacity": 0.45},
+                        showlegend=False,
+                    ))
+                    figv.add_trace(go.Scatter(
+                        x=[seedvals.mean()], y=[m],
+                        mode="markers", marker={"color": "#c0504d", "size": 12, "symbol": "line-ns-open"},
+                        showlegend=False,
+                    ))
+            figv.update_layout(
+                height=420, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font={"color": "#52606e", "family": "Inter"},
+                xaxis={"title": f"|{metric_pick} gap| after mitigation, per seed", "gridcolor": "#eef1f5"},
+                yaxis={"autorange": "reversed"},
+                margin=dict(l=10, r=10, t=20, b=10),
+            )
+            st.markdown('<div class="block-h" style="margin-top:1.6rem;">Variability across seeds</div>', unsafe_allow_html=True)
+            st.caption("Each blue dot is one of the ten runs; the red mark is the mean. Wide spread means the effect is less consistent across runs.")
+            st.plotly_chart(figv, use_container_width=True)
 elif page == "Overview":
     st.markdown('<div class="section-title">Overview</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Both mitigation methods, both metrics, across all models (10 seeds).</div>', unsafe_allow_html=True)
