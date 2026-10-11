@@ -3,73 +3,66 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
-# ----------------------------------------------------------------------------
-# Page config
-# ----------------------------------------------------------------------------
-st.set_page_config(
-    page_title="Fairness Monitor — Credit Scoring",
-    page_icon="⚖️",
-    layout="wide",
-)
+st.set_page_config(page_title="Fairness Monitor — Credit Scoring", page_icon="⚖️", layout="wide")
 
 # ----------------------------------------------------------------------------
-# Styling
+# Styling — editorial / technical report
 # ----------------------------------------------------------------------------
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,600&family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Inter:wght@400;500;600&display=swap');
 
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    .eyebrow {
-        font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em;
-        color: #c9a24b; text-transform: uppercase; margin-bottom: 0.6rem;
+    .masthead {
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+        padding-bottom: 1.4rem; margin-bottom: 2.2rem;
     }
-    .hero-title {
-        font-size: 2.6rem; font-weight: 700; color: #f2f5f9;
-        margin: 0 0 0.6rem 0; line-height: 1.12;
+    .masthead .kicker {
+        font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+        color: #8a96a8; margin-bottom: 1rem;
     }
-    .hero-title .accent {
-        font-family: 'Fraunces', serif; font-style: italic;
-        font-weight: 600; color: #c9a24b;
+    .masthead h1 {
+        font-family: 'Newsreader', serif; font-weight: 500;
+        font-size: 3rem; line-height: 1.05; color: #f2f5f9;
+        margin: 0 0 1rem 0; letter-spacing: -0.01em;
     }
-    .hero-subtitle {
-        color: #8a96a8; font-size: 1.05rem; line-height: 1.55;
-        max-width: 640px; margin-bottom: 2.2rem;
+    .masthead .standfirst {
+        font-family: 'Newsreader', serif; font-size: 1.25rem; font-weight: 400;
+        line-height: 1.5; color: #aab4c2; max-width: 680px; font-style: italic;
     }
+
+    .lede {
+        font-size: 1rem; line-height: 1.7; color: #c3cbd6;
+        max-width: 680px; margin-bottom: 2.6rem;
+    }
+
+    .contents-label {
+        font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase;
+        color: #8a96a8; margin-bottom: 1.2rem;
+        border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.6rem;
+    }
+    .toc-item {
+        display: flex; align-items: baseline; gap: 1.2rem;
+        padding: 0.9rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .toc-num {
+        font-family: 'Newsreader', serif; font-size: 1.4rem; color: #5c6779;
+        min-width: 2rem; font-style: italic;
+    }
+    .toc-body { flex: 1; }
+    .toc-name { font-size: 1.05rem; font-weight: 600; color: #eef1f6; margin-bottom: 0.2rem; }
+    .toc-desc { font-size: 0.9rem; color: #8a96a8; line-height: 1.45; }
+
     .section-title {
-        font-size: 1.3rem; font-weight: 700; color: #eef1f6;
-        margin: 2.2rem 0 0.4rem 0;
+        font-family: 'Newsreader', serif; font-size: 1.9rem; font-weight: 500;
+        color: #eef1f6; margin: 0 0 0.3rem 0;
     }
-    .section-sub { color: #7c8798; font-size: 0.92rem; margin-bottom: 1.3rem; }
-
-    .flow-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0 2rem 0; }
-    .flow-card {
-        flex: 1; min-width: 150px;
-        border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
-        padding: 1.1rem 1.2rem; background: rgba(255,255,255,0.02);
-    }
-    .flow-step {
-        font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
-        text-transform: uppercase; color: #c9a24b; margin-bottom: 0.5rem;
-    }
-    .flow-name { font-size: 1rem; font-weight: 600; color: #eef1f6; margin-bottom: 0.35rem; }
-    .flow-desc { font-size: 0.85rem; color: #8a96a8; line-height: 1.4; }
-
-    .tag-row { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-    .tag {
-        padding: 0.45rem 0.9rem; border-radius: 6px;
-        border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02);
-        font-size: 0.85rem; color: #b7c0cd;
-    }
-    .tag b { color: #eef1f6; font-weight: 600; }
-    .tag.priv { border-color: rgba(201,162,75,0.4); }
-    .tag.priv b { color: #d9bd7a; }
+    .section-sub { color: #8a96a8; font-size: 0.95rem; margin-bottom: 1.6rem; }
 
     [data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 10px !important;
-        border-color: rgba(255,255,255,0.08) !important;
+        border-radius: 8px !important; border-color: rgba(255,255,255,0.08) !important;
     }
 
     .pill {
@@ -99,21 +92,7 @@ ATTR_CONFIG = {
 }
 
 MODEL_ORDER = ["LogReg", "SVM", "kNN", "MLP", "RandomForest", "GradBoost", "XGBoost", "LightGBM", "CatBoost"]
-MODEL_DESC = {
-    "LogReg": "Logistic regression — a linear model, the classic credit-scoring baseline.",
-    "SVM": "Linear support vector machine — another linear classifier.",
-    "kNN": "k-nearest neighbors — classifies by the closest examples in the data.",
-    "MLP": "A small neural network with two hidden layers.",
-    "RandomForest": "An ensemble of decision trees trained on random subsets.",
-    "GradBoost": "Gradient boosting — trees built sequentially to correct each other.",
-    "XGBoost": "An optimized gradient-boosting library, strong on tabular data.",
-    "LightGBM": "A fast gradient-boosting framework.",
-    "CatBoost": "A gradient-boosting library designed to handle categorical data.",
-}
 
-# ----------------------------------------------------------------------------
-# Data loading
-# ----------------------------------------------------------------------------
 @st.cache_data
 def load_predictions():
     return pd.read_csv(PRED_PATH)
@@ -133,90 +112,92 @@ def load_allcond():
         return None
 
 # ----------------------------------------------------------------------------
-# Sidebar navigation
+# Sidebar
 # ----------------------------------------------------------------------------
 st.sidebar.markdown("### Fairness Monitor")
 st.sidebar.caption("Credit scoring · APW thesis")
-
-page = st.sidebar.radio(
-    "Navigate",
-    ["Home", "Model", "Compare", "Overview", "Methodology"],
-    label_visibility="collapsed",
-)
-
+page = st.sidebar.radio("Navigate", ["Home", "Model", "Compare", "Overview", "Methodology"], label_visibility="collapsed")
 st.sidebar.markdown("---")
 
 # ============================================================================
-# PAGE: HOME
+# HOME
 # ============================================================================
 if page == "Home":
-    st.markdown('<div class="eyebrow">Credit Risk &amp; Fairness Monitoring</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-title">Fairness Monitor <span class="accent">Console</span></div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="hero-subtitle">Checks whether a credit scoring model treats demographic groups '
-        "fairly, before and after bias mitigation. Reads predictions and the protected attribute only — "
-        "never the raw input features.</div>",
+        """
+        <div class="masthead">
+            <div class="kicker">Credit Risk · Model Governance · Fairness</div>
+            <h1>A monitor for fairness<br>in credit scoring models</h1>
+            <div class="standfirst">When a model decides who gets credit, fairness is not one number.
+            It is several, and they do not always agree.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        """
+        <div class="lede">
+        This console examines how a credit scoring model treats demographic groups, before and after
+        bias mitigation. It works the way an auditor would: it sees only the model's predictions and the
+        protected attribute, never the raw features the model was trained on. The point is not to produce
+        a single verdict, but to make visible where different fairness measures, and different mitigation
+        methods, disagree.
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="section-title">How it works</div>', unsafe_allow_html=True)
+    st.markdown('<div class="contents-label">Contents</div>', unsafe_allow_html=True)
     st.markdown(
         """
-        <div class="flow-row">
-            <div class="flow-card">
-                <div class="flow-step">Step 1</div>
-                <div class="flow-name">Model</div>
-                <div class="flow-desc">Pick a model and read its fairness metrics, before and after mitigation.</div>
+        <div class="toc-item">
+            <div class="toc-num">I</div>
+            <div class="toc-body">
+                <div class="toc-name">Model</div>
+                <div class="toc-desc">A single model, read in detail: each fairness metric before and after mitigation, with a plain reading of what it means.</div>
             </div>
-            <div class="flow-card">
-                <div class="flow-step">Step 2</div>
-                <div class="flow-name">Compare</div>
-                <div class="flow-desc">Line models up side by side and rank them from fairest to least fair.</div>
+        </div>
+        <div class="toc-item">
+            <div class="toc-num">II</div>
+            <div class="toc-body">
+                <div class="toc-name">Compare</div>
+                <div class="toc-desc">Models placed side by side and ranked, from the fairest to the least fair on a chosen metric.</div>
             </div>
-            <div class="flow-card">
-                <div class="flow-step">Step 3</div>
-                <div class="flow-name">Overview</div>
-                <div class="flow-desc">See the full picture: both mitigation methods across both metrics.</div>
+        </div>
+        <div class="toc-item">
+            <div class="toc-num">III</div>
+            <div class="toc-body">
+                <div class="toc-name">Overview</div>
+                <div class="toc-desc">The full picture: two mitigation methods across two fairness metrics, and where they pull in opposite directions.</div>
             </div>
-            <div class="flow-card">
-                <div class="flow-step">Reference</div>
-                <div class="flow-name">Methodology</div>
-                <div class="flow-desc">Dataset, metrics, thresholds and how the experiment was run.</div>
+        </div>
+        <div class="toc-item">
+            <div class="toc-num">IV</div>
+            <div class="toc-body">
+                <div class="toc-name">Methodology</div>
+                <div class="toc-desc">The dataset, the injected bias, the metrics and thresholds, and how the experiment was run.</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    st.info("Use the menu on the left to move between sections. Start with **Model**.")
 
-# ============================================================================
-# PAGE: MODEL (placeholder — Fase 2)
-# ============================================================================
 elif page == "Model":
     st.markdown('<div class="section-title">Model audit</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Pick one model and read its fairness metrics in detail.</div>', unsafe_allow_html=True)
-    st.info("Coming in the next step.")
+    st.caption("Coming in the next step.")
 
-# ============================================================================
-# PAGE: COMPARE (placeholder)
-# ============================================================================
 elif page == "Compare":
     st.markdown('<div class="section-title">Compare models</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Line models up side by side.</div>', unsafe_allow_html=True)
-    st.info("Coming in a later step.")
+    st.markdown('<div class="section-sub">Models placed side by side.</div>', unsafe_allow_html=True)
+    st.caption("Coming in a later step.")
 
-# ============================================================================
-# PAGE: OVERVIEW (placeholder)
-# ============================================================================
 elif page == "Overview":
     st.markdown('<div class="section-title">Overview</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Both methods, both metrics, at a glance.</div>', unsafe_allow_html=True)
-    st.info("Coming in a later step.")
+    st.markdown('<div class="section-sub">Two methods, two metrics, at a glance.</div>', unsafe_allow_html=True)
+    st.caption("Coming in a later step.")
 
-# ============================================================================
-# PAGE: METHODOLOGY (placeholder)
-# ============================================================================
 elif page == "Methodology":
     st.markdown('<div class="section-title">Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">How the experiment was built.</div>', unsafe_allow_html=True)
-    st.info("Coming in a later step.")
+    st.caption("Coming in a later step.")
