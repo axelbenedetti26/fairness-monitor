@@ -193,9 +193,48 @@ elif page == "Model":
     st.plotly_chart(fig, use_container_width=True)
 
 elif page == "Compare":
+    preds = load_predictions()
     st.markdown('<div class="section-title">Compare models</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Models side by side.</div>', unsafe_allow_html=True)
-    st.caption("Coming in a later step.")
+    st.markdown('<div class="section-sub">Models ranked by fairness, after mitigation.</div>', unsafe_allow_html=True)
+
+    cc1, cc2 = st.columns([2, 1], gap="medium")
+    sel_models = cc1.multiselect("Models", MODEL_ORDER, default=MODEL_ORDER)
+    attr_name = cc2.selectbox("Protected attribute", list(ATTR_CONFIG.keys()), key="cmp_attr")
+    attr = ATTR_CONFIG[attr_name]
+    metric_pick = st.radio("Rank by", ["SP", "TPR", "FPR"], horizontal=True,
+                           format_func=lambda k: {"SP": "Statistical parity", "TPR": "TPR gap", "FPR": "FPR gap"}[k])
+
+    if not sel_models:
+        st.info("Select at least one model.")
+    else:
+        rows = []
+        for m in sel_models:
+            s = preds[(preds.model == m) & (preds.dataset == "synthetic")]
+            o = preds[(preds.model == m) & (preds.dataset == "original")]
+            ms = model_metrics(s, attr["column"], attr["priv_code"], attr["under_code"])
+            mo = model_metrics(o, attr["column"], attr["priv_code"], attr["under_code"])
+            rows.append({"model": m, "after": abs(ms[metric_pick]), "before": abs(mo[metric_pick])})
+        rank = pd.DataFrame(rows).sort_values("after")
+
+        # ranking bar chart (horizontal, fairest on top)
+        fig = go.Figure()
+        fig.add_trace(go.Bar(y=rank["model"], x=rank["before"], name="Original",
+                             orientation="h", marker_color="#9fb6cc"))
+        fig.add_trace(go.Bar(y=rank["model"], x=rank["after"], name="After FairFinGAN",
+                             orientation="h", marker_color="#2b5c8a"))
+        fig.update_layout(
+            barmode="group", height=460, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            font={"color": "#52606e", "family": "Inter"},
+            legend={"orientation": "h", "y": 1.08},
+            xaxis={"title": "absolute gap (closer to 0 = fairer)", "gridcolor": "#eef1f5"},
+            yaxis={"autorange": "reversed"},
+            margin=dict(l=10, r=10, t=30, b=10),
+        )
+        st.markdown('<div class="block-h" style="margin-top:1rem;">Ranking — fairest at the top</div>', unsafe_allow_html=True)
+        st.plotly_chart(fig, use_container_width=True)
+
+        fairest = rank.iloc[0]["model"]; worst = rank.iloc[-1]["model"]
+        st.caption(f"On {metric_pick} after mitigation: **{fairest}** is the fairest, **{worst}** the least fair.")
 elif page == "Overview":
     st.markdown('<div class="section-title">Overview</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">Two methods, two metrics.</div>', unsafe_allow_html=True)
