@@ -109,10 +109,10 @@ def model_metrics(df, col, priv, under):
     up, ut, uf = _rates(u["y_true"].values, u["y_pred"].values)
     return {"SP": up - pp, "TPR": ut - pt, "FPR": uf - pf}
 
-def status_pill(val):
+def status_pill(val, green=GREEN, red=RED):
     d = abs(val)
-    if d < GREEN: return "ok", "Within tolerance"
-    if d < RED:   return "watch", "Monitor"
+    if d < green: return "ok", "Within tolerance"
+    if d < red:   return "watch", "Monitor"
     return "breach", "Breach"
 
 st.sidebar.markdown("### Fairness Monitor")
@@ -154,6 +154,12 @@ elif page == "Model":
 
     st.caption(MODEL_DESC.get(model, ""))
 
+    green_cut = st.slider(
+        "Tolerance (risk appetite) — gap below this is acceptable",
+        min_value=0.01, max_value=0.15, value=0.03, step=0.01, format="%.2f",
+    )
+    red_cut = green_cut * 2.3
+
     orig = preds[(preds.model == model) & (preds.dataset == "original")]
     synt = preds[(preds.model == model) & (preds.dataset == "synthetic")]
     m_orig = model_metrics(orig, attr["column"], attr["priv_code"], attr["under_code"])
@@ -163,7 +169,7 @@ elif page == "Model":
     for col, (key, label, expl) in zip(cols, METRICS):
         before = m_orig[key]; after = m_synt[key]
         delta = abs(after) - abs(before)          # negative = fairer
-        cls, txt = status_pill(after)
+        cls, txt = status_pill(after, green_cut, red_cut)
         dgood = "good" if delta < 0 else "bad"
         dsign = "▼" if delta < 0 else "▲"
         with col:
