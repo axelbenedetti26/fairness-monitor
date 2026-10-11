@@ -291,4 +291,57 @@ elif page == "Overview":
 elif page == "Methodology":
     st.markdown('<div class="section-title">Methodology</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-sub">How the experiment was built.</div>', unsafe_allow_html=True)
-    st.caption("Coming in a later step.")
+
+    st.markdown(
+        """
+        <div class="block">
+            <div class="block-h">Dataset</div>
+            <div class="lede">Default of Credit Card Clients (Taiwan, UCI) — 30,000 clients, 23 features.
+            The positive class is <b>default (1)</b>, so true and false positive rates are computed with
+            respect to predicting default, not credit approval.</div>
+        </div>
+        <div class="block">
+            <div class="block-h">Injected bias</div>
+            <div class="lede">The raw data shows little disparity on sex, so a controlled bias was injected
+            before splitting: 15% of labels flipped in each group, worsening the unprivileged group and
+            improving the privileged one. This is a controlled perturbation to study how methods respond,
+            not real-world bias. Because it is injected before the split, metrics are measured relative to
+            this simulated scenario.</div>
+        </div>
+        <div class="block">
+            <div class="block-h">Models and mitigation</div>
+            <div class="lede">Nine classifiers (logistic regression, linear SVM, k-NN, a small neural
+            network, and five tree ensembles) under fixed configurations. Two pre-processing mitigation
+            methods are compared: <b>FairFinGAN</b> (a fairness-aware GAN generating de-biased synthetic
+            data, on all nine models) and <b>reweighting</b> (AIF360, on six models).</div>
+        </div>
+        <div class="block">
+            <div class="block-h">Metrics</div>
+            <div class="lede">Statistical parity difference, the TPR gap and FPR gap (the two parts of
+            equalized odds), and an aggregate equalized-odds value, max(|TPR gap|, |FPR gap|). All in
+            absolute terms, closer to zero = fairer.</div>
+        </div>
+        <div class="block">
+            <div class="block-h">Evaluation</div>
+            <div class="lede">Ten repeated random holdouts. All conditions are evaluated on the same
+            held-out real test set, with the generator trained only on the training partition. Effects are
+            summarized by paired per-seed differences, so consistent effects can be told apart from
+            seed-to-seed noise.</div>
+        </div>
+        <div class="block">
+            <div class="block-h">Thresholds and scope</div>
+            <div class="lede">The traffic-light tolerance and the four-fifths rule are practical reference
+            points, not legal standards (the four-fifths rule is US employment guidance, not EU lending
+            law). The deployed view shows a single representative run; the statistical claims rest on the
+            full ten-seed analysis. SHAP is an exploratory proxy check, not a causal explanation or a
+            guarantee against proxy discrimination.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    shap_df = load_shap()
+    if shap_df is not None:
+        with st.expander("Proxy check (SHAP) — top features"):
+            st.dataframe(shap_df.head(10), use_container_width=True, hide_index=True)
+            st.caption("Exploratory: features with high importance and high correlation with the protected attribute are proxy candidates.")
