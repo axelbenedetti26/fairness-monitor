@@ -12,10 +12,6 @@ st.set_page_config(
     layout="wide",
 )
 
-# ----------------------------------------------------------------------------
-# Custom styling — two fonts only: Inter everywhere, Fraunces (italic) as a
-# single small accent on the title. No monospace, no negative-margin tricks.
-# ----------------------------------------------------------------------------
 st.markdown(
     """
     <style>
@@ -82,7 +78,6 @@ st.markdown(
         border-color: rgba(255, 255, 255, 0.08) !important;
     }
 
-    /* step tracker — plenty of breathing room, no crowding */
     .step-row {
         display: flex;
         gap: 2.2rem;
@@ -107,7 +102,6 @@ st.markdown(
     .step-label { font-size: 0.95rem; font-weight: 600; color: #cfd6e0; }
     .step-item:not(.done):not(.active) .step-label { color: #5c6779; }
 
-    /* gauge card */
     .gauge-rail { border-left: 4px solid; padding-left: 1rem; margin: -0.2rem 0 1rem -1rem; }
     .gauge-head { display: flex; align-items: center; justify-content: space-between; }
     .gauge-name { font-weight: 700; font-size: 1rem; color: #eef1f6; }
@@ -179,17 +173,17 @@ N_BOOT = 200
 ATTR_CONFIG = {
     "Sex": {"column": "sex", "priv_code": 2, "priv_label": "Women", "under_code": 1, "under_label": "Men"},
     "Age": {
-        "column": "age_group", "priv_code": "core", "priv_label": "Core age (25-65)",
-        "under_code": "edge", "under_label": "Edge age (<25 or >65)",
+        "column": "age_group", "priv_code": 1, "priv_label": "Core age (25-65)",
+        "under_code": 0, "under_label": "Edge age (<25 or >65)",
     },
 }
 
-# key -> (label, caption, null_value, format, is_ratio)
+# key -> (label, caption, null_value, format, is_ratio). Positive class = default (1).
 METRIC_INFO = {
-    "SP_diff": ("Statistical parity diff", "How different the share of predicted positive outcomes is between groups.", 0.0, "{:.3f}", False),
-    "TPR_diff": ("TPR diff (Equal Opportunity)", "How different the share of correctly approved good payers is between groups.", 0.0, "{:.3f}", False),
-    "FPR_diff": ("FPR diff (EOd)", "How different the share of cases wrongly flagged as risk is between groups.", 0.0, "{:.3f}", False),
-    "DI": ("Disparate impact (four-fifths ratio)", "Underprivileged approval rate as a share of the privileged rate. 1.00 = parity, ≥ 0.80 = within the four-fifths tolerance.", 1.0, "{:.2f}", True),
+    "SP_diff": ("Statistical parity diff", "How different the share predicted to default (default = 1) is between groups.", 0.0, "{:.3f}", False),
+    "TPR_diff": ("TPR gap (default = 1)", "How different the share of true defaulters correctly flagged is between groups.", 0.0, "{:.3f}", False),
+    "FPR_diff": ("FPR gap (default = 1)", "How different the share of non-defaulters wrongly flagged as default is between groups.", 0.0, "{:.3f}", False),
+    "DI": ("Disparate impact (four-fifths ratio)", "Underprivileged default-prediction rate as a share of the privileged rate. 1.00 = parity.", 1.0, "{:.2f}", True),
 }
 METRIC_CAPTIONS = {v[0]: v[1] for v in METRIC_INFO.values()}
 METRIC_KEYS = {v[0]: k for k, v in METRIC_INFO.items()}
@@ -303,7 +297,7 @@ RADAR_COLORS = ["#c9a24b", "#5b8ac2", "#8a5fd6", "#4ade80", "#f87171"]
 
 
 def make_radar(current_df, models, metric_keys=("SP_diff", "TPR_diff", "FPR_diff")):
-    labels = {"SP_diff": "SP diff", "TPR_diff": "EO diff", "FPR_diff": "FPR diff"}
+    labels = {"SP_diff": "SP diff", "TPR_diff": "TPR gap", "FPR_diff": "FPR gap"}
     theta = [labels[k] for k in metric_keys] + [labels[metric_keys[0]]]
     fig = go.Figure()
     for i, model in enumerate(models):
@@ -398,7 +392,7 @@ metric_name = st.sidebar.selectbox("Metric", list(METRIC_KEYS.keys()), index=3)
 metric_key = METRIC_KEYS[metric_name]
 
 # ----------------------------------------------------------------------------
-# Hero — simple, spacious, two fonts
+# Hero
 # ----------------------------------------------------------------------------
 st.markdown('<div class="eyebrow">Credit Risk &amp; Fairness Monitoring</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Fairness Monitor <span class="accent">Console</span></div>', unsafe_allow_html=True)
@@ -551,7 +545,7 @@ with col_table:
             )
         table_html = (
             "<table class='rt-table'><thead><tr>"
-            "<th>Model</th><th>Dataset</th><th>SP diff</th><th>EO diff</th><th>FPR diff</th><th>DI</th>"
+            "<th>Model</th><th>Dataset</th><th>SP diff</th><th>TPR gap</th><th>FPR gap</th><th>DI</th>"
             f"</tr></thead><tbody>{rows_html}</tbody></table>"
         )
         st.markdown(table_html, unsafe_allow_html=True)
@@ -569,7 +563,7 @@ with col_table:
 if shap_df is not None:
     with st.expander("Proxy check (SHAP)"):
         st.dataframe(shap_df, width="stretch", hide_index=True)
-        st.caption("Features with high importance and high correlation with the protected attribute are proxy candidates.")
+        st.caption("Exploratory: features with high importance and high correlation with the protected attribute are proxy candidates. Not a causal explanation or a guarantee against proxy discrimination.")
 elif custom_data:
     with st.expander("Proxy check (SHAP)"):
         st.info("SHAP proxy check is only available for the preloaded experiment data, not for uploaded CSVs.")
@@ -579,14 +573,16 @@ with st.expander("Technical notes — methodology, thresholds, limitations"):
         f"""
 **Thresholds.** The Disparate Impact tolerance (≥ 0.80) is the four-fifths rule from EEOC adverse-impact
 guidance — US employment law, not lending regulation, used here as a practical reference point. TPR/FPR
-diff cutoffs ({HEURISTIC_GREEN:.2f} / {HEURISTIC_RED:.2f}) are literature heuristics with no regulatory backing.
+gap cutoffs ({HEURISTIC_GREEN:.2f} / {HEURISTIC_RED:.2f}) are literature heuristics with no regulatory backing.
 
-**Significance.** "n.s." next to a model means the 95% bootstrap confidence interval (200 resamples) for
-that gap includes the no-disparity value — the color still reflects the point estimate, but treat it as
-directional, not proven.
+**Significance.** "n.s." next to a model means the 95% bootstrap confidence interval ({N_BOOT} resamples) for
+that gap includes the no-disparity value (zero for differences, one for the disparate impact ratio) — the
+color still reflects the point estimate, but treat it as directional. A non-significant result is not proof
+that no disparity exists.
 
-**Scope.** Bias is synthetically injected (15% label flipping), not organically occurring. This is a
-point-in-time comparison, not continuous production monitoring. No access control, audit trail, or
-versioning — this is a proof-of-concept dashboard.
+**Scope.** Bias is synthetically injected (15% label flipping on both groups), not organically occurring.
+The positive class is default (1). This view shows a single representative run (one random seed); the
+statistical claims of the thesis rest on the full ten-seed analysis, not on this demonstration. This is a
+point-in-time, proof-of-concept dashboard — no access control, audit trail, or versioning.
         """
     )
