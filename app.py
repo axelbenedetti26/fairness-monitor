@@ -6,72 +6,76 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Fairness Monitor — Credit Scoring", page_icon="⚖️", layout="wide")
 
 # ----------------------------------------------------------------------------
-# Styling — editorial / technical report
+# Styling — management-dashboard look: dark navy bg, white cards, icon headers
 # ----------------------------------------------------------------------------
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Inter:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
+    .stApp { background: #16293d; }
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-    .masthead {
-        border-bottom: 1px solid rgba(255,255,255,0.12);
-        padding-bottom: 1.4rem; margin-bottom: 2.2rem;
-    }
-    .masthead .kicker {
-        font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
-        color: #8a96a8; margin-bottom: 1rem;
-    }
+    /* page masthead (dark strip) */
+    .masthead { margin-bottom: 1.6rem; }
     .masthead h1 {
-        font-family: 'Newsreader', serif; font-weight: 500;
-        font-size: 3rem; line-height: 1.05; color: #f2f5f9;
-        margin: 0 0 1rem 0; letter-spacing: -0.01em;
+        font-size: 2.1rem; font-weight: 800; color: #ffffff;
+        margin: 0; letter-spacing: 0.01em; text-transform: uppercase;
     }
-    .masthead .standfirst {
-        font-family: 'Newsreader', serif; font-size: 1.25rem; font-weight: 400;
-        line-height: 1.5; color: #aab4c2; max-width: 680px; font-style: italic;
-    }
+    .masthead .sub { font-size: 0.95rem; color: #9fb0c3; margin-top: 0.2rem; letter-spacing: 0.08em; }
 
-    .lede {
-        font-size: 1rem; line-height: 1.7; color: #c3cbd6;
-        max-width: 680px; margin-bottom: 2.6rem;
+    /* white card */
+    .card {
+        background: #ffffff; border-radius: 6px; padding: 0;
+        margin-bottom: 1.3rem; overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
     }
+    .card-head {
+        display: flex; align-items: center; gap: 0.8rem;
+        padding: 1rem 1.3rem; border-bottom: 1px solid #eef1f4;
+    }
+    .card-icon {
+        width: 34px; height: 34px; border-radius: 50%;
+        background: #2d6a9f; color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
+    }
+    .card-title { font-size: 1.15rem; font-weight: 700; color: #1f2d3d; }
+    .card-body { padding: 1.2rem 1.3rem; }
 
-    .contents-label {
-        font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase;
-        color: #8a96a8; margin-bottom: 1.2rem;
-        border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.6rem;
-    }
-    .toc-item {
-        display: flex; align-items: baseline; gap: 1.2rem;
-        padding: 0.9rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-    .toc-num {
-        font-family: 'Newsreader', serif; font-size: 1.4rem; color: #5c6779;
-        min-width: 2rem; font-style: italic;
-    }
-    .toc-body { flex: 1; }
-    .toc-name { font-size: 1.05rem; font-weight: 600; color: #eef1f6; margin-bottom: 0.2rem; }
-    .toc-desc { font-size: 0.9rem; color: #8a96a8; line-height: 1.45; }
+    .lede { font-size: 0.98rem; line-height: 1.65; color: #44515f; }
 
-    .section-title {
-        font-family: 'Newsreader', serif; font-size: 1.9rem; font-weight: 500;
-        color: #eef1f6; margin: 0 0 0.3rem 0;
+    /* contents list inside a white card */
+    .toc-row {
+        display: flex; align-items: baseline; gap: 1rem;
+        padding: 0.85rem 0; border-bottom: 1px solid #eef1f4;
     }
-    .section-sub { color: #8a96a8; font-size: 0.95rem; margin-bottom: 1.6rem; }
+    .toc-row:last-child { border-bottom: none; }
+    .toc-badge {
+        width: 26px; height: 26px; border-radius: 5px; flex-shrink: 0;
+        background: #2d6a9f; color: #fff; font-size: 0.8rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .toc-text { flex: 1; }
+    .toc-h { font-size: 1rem; font-weight: 700; color: #1f2d3d; margin-bottom: 0.1rem; }
+    .toc-d { font-size: 0.88rem; color: #5d6b7a; line-height: 1.4; }
 
-    [data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 8px !important; border-color: rgba(255,255,255,0.08) !important;
+    /* status chips */
+    .chip-row { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+    .chip {
+        padding: 0.5rem 1rem; border-radius: 5px; font-size: 0.9rem;
+        font-weight: 600; color: #fff;
     }
+    .chip.blue { background: #2d6a9f; }
+    .chip.amber { background: #e0a93b; }
 
-    .pill {
-        font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
-        text-transform: uppercase; border-radius: 5px; padding: 0.25rem 0.6rem;
-    }
-    .pill.ok { color: #1a2e22; background: #4ade80; }
-    .pill.watch { color: #2e2410; background: #d9bd7a; }
-    .pill.breach { color: #2e1414; background: #f87171; }
+    .section-title { font-size: 1.5rem; font-weight: 800; color: #ffffff; margin: 0 0 0.3rem 0; }
+    .section-sub { color: #9fb0c3; font-size: 0.95rem; margin-bottom: 1.4rem; }
+
+    .pill { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 5px; padding: 0.25rem 0.6rem; }
+    .pill.ok { color: #fff; background: #4caf72; }
+    .pill.watch { color: #3a2e10; background: #e0a93b; }
+    .pill.breach { color: #fff; background: #e05a5a; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -90,26 +94,19 @@ ATTR_CONFIG = {
     "Sex": {"column": "sex", "priv_code": 2, "priv_label": "Women", "under_code": 1, "under_label": "Men"},
     "Age": {"column": "age_group", "priv_code": 1, "priv_label": "Core age (25-65)", "under_code": 0, "under_label": "Edge age (<25 or >65)"},
 }
-
 MODEL_ORDER = ["LogReg", "SVM", "kNN", "MLP", "RandomForest", "GradBoost", "XGBoost", "LightGBM", "CatBoost"]
 
 @st.cache_data
 def load_predictions():
     return pd.read_csv(PRED_PATH)
-
 @st.cache_data
 def load_shap():
-    try:
-        return pd.read_csv(SHAP_PATH)
-    except FileNotFoundError:
-        return None
-
+    try: return pd.read_csv(SHAP_PATH)
+    except FileNotFoundError: return None
 @st.cache_data
 def load_allcond():
-    try:
-        return pd.read_csv(ALLCOND_PATH)
-    except FileNotFoundError:
-        return None
+    try: return pd.read_csv(ALLCOND_PATH)
+    except FileNotFoundError: return None
 
 # ----------------------------------------------------------------------------
 # Sidebar
@@ -126,56 +123,93 @@ if page == "Home":
     st.markdown(
         """
         <div class="masthead">
-            <div class="kicker">Credit Risk · Model Governance · Fairness</div>
-            <h1>A monitor for fairness<br>in credit scoring models</h1>
-            <div class="standfirst">When a model decides who gets credit, fairness is not one number.
-            It is several, and they do not always agree.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        """
-        <div class="lede">
-        This console examines how a credit scoring model treats demographic groups, before and after
-        bias mitigation. It works the way an auditor would: it sees only the model's predictions and the
-        protected attribute, never the raw features the model was trained on. The point is not to produce
-        a single verdict, but to make visible where different fairness measures, and different mitigation
-        methods, disagree.
+            <h1>Fairness Monitor</h1>
+            <div class="sub">CREDIT SCORING · MODEL GOVERNANCE</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="contents-label">Contents</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns([3, 2], gap="medium")
+
+    with c1:
+        st.markdown(
+            """
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-icon">●</div>
+                    <div class="card-title">What this is</div>
+                </div>
+                <div class="card-body">
+                    <div class="lede">
+                    This console examines how a credit scoring model treats demographic groups, before and
+                    after bias mitigation. It works the way an auditor would: it sees only the model's
+                    predictions and the protected attribute, never the raw features. The goal is not a single
+                    verdict, but to show where different fairness measures and different mitigation methods
+                    disagree.
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with c2:
+        st.markdown(
+            """
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-icon">◆</div>
+                    <div class="card-title">At a glance</div>
+                </div>
+                <div class="card-body">
+                    <div class="chip-row">
+                        <span class="chip blue">9 models</span>
+                        <span class="chip blue">2 methods</span>
+                        <span class="chip amber">2 metrics</span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.markdown(
         """
-        <div class="toc-item">
-            <div class="toc-num">I</div>
-            <div class="toc-body">
-                <div class="toc-name">Model</div>
-                <div class="toc-desc">A single model, read in detail: each fairness metric before and after mitigation, with a plain reading of what it means.</div>
+        <div class="card">
+            <div class="card-head">
+                <div class="card-icon">≡</div>
+                <div class="card-title">Sections</div>
             </div>
-        </div>
-        <div class="toc-item">
-            <div class="toc-num">II</div>
-            <div class="toc-body">
-                <div class="toc-name">Compare</div>
-                <div class="toc-desc">Models placed side by side and ranked, from the fairest to the least fair on a chosen metric.</div>
-            </div>
-        </div>
-        <div class="toc-item">
-            <div class="toc-num">III</div>
-            <div class="toc-body">
-                <div class="toc-name">Overview</div>
-                <div class="toc-desc">The full picture: two mitigation methods across two fairness metrics, and where they pull in opposite directions.</div>
-            </div>
-        </div>
-        <div class="toc-item">
-            <div class="toc-num">IV</div>
-            <div class="toc-body">
-                <div class="toc-name">Methodology</div>
-                <div class="toc-desc">The dataset, the injected bias, the metrics and thresholds, and how the experiment was run.</div>
+            <div class="card-body">
+                <div class="toc-row">
+                    <div class="toc-badge">I</div>
+                    <div class="toc-text">
+                        <div class="toc-h">Model</div>
+                        <div class="toc-d">A single model, read in detail: each fairness metric before and after mitigation, with a plain reading of what it means.</div>
+                    </div>
+                </div>
+                <div class="toc-row">
+                    <div class="toc-badge">II</div>
+                    <div class="toc-text">
+                        <div class="toc-h">Compare</div>
+                        <div class="toc-d">Models placed side by side and ranked, from fairest to least fair on a chosen metric.</div>
+                    </div>
+                </div>
+                <div class="toc-row">
+                    <div class="toc-badge">III</div>
+                    <div class="toc-text">
+                        <div class="toc-h">Overview</div>
+                        <div class="toc-d">The full picture: two mitigation methods across two fairness metrics, and where they pull in opposite directions.</div>
+                    </div>
+                </div>
+                <div class="toc-row">
+                    <div class="toc-badge">IV</div>
+                    <div class="toc-text">
+                        <div class="toc-h">Methodology</div>
+                        <div class="toc-d">The dataset, the injected bias, the metrics and thresholds, and how the experiment was run.</div>
+                    </div>
+                </div>
             </div>
         </div>
         """,
