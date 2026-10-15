@@ -88,22 +88,21 @@ METRICS = [
 ]
 METRIC_COL = {"SP": "statistical_parity_diff", "TPR": "TPR_diff (EOd)", "FPR": "FPR_diff (EOd)"}
 RW_SCOPE = "Reweighting was evaluated on logistic regression and the five tree ensembles only, as a scope choice of the study."
-EPS = 0.001    # changes below 0.1 percentage points are shown as "no change"
+EPS = 0.001    # changes below 0.1 percentage points are shown as "<0.001"
 
+import os
+def _mtime(path):
+    try: return os.path.getmtime(path)
+    except OSError: return None
+
+# The cache key includes the file's modification time, so new data files are picked up after a redeploy.
 @st.cache_data
-def load_predictions(): return pd.read_csv(PRED_PATH)
-@st.cache_data
-def load_shap():
-    try: return pd.read_csv(SHAP_PATH)
-    except FileNotFoundError: return None
-@st.cache_data
-def load_allcond():
-    try: return pd.read_csv(ALLCOND_PATH)
-    except FileNotFoundError: return None
-@st.cache_data
-def load_rw():
-    try: return pd.read_csv(RW_PATH)
-    except FileNotFoundError: return None
+def _read(path, mtime):
+    return pd.read_csv(path) if mtime is not None else None
+def load_predictions(): return _read(PRED_PATH, _mtime(PRED_PATH))
+def load_shap(): return _read(SHAP_PATH, _mtime(SHAP_PATH))
+def load_allcond(): return _read(ALLCOND_PATH, _mtime(ALLCOND_PATH))
+def load_rw(): return _read(RW_PATH, _mtime(RW_PATH))
 
 def _rates(y_true, y_pred):
     pos = y_pred.mean() if len(y_pred) else np.nan
@@ -186,8 +185,10 @@ elif page == "Model":
 
     orig = preds[(preds.model == model) & (preds.dataset == "original")]
     mitg = preds[(preds.model == model) & (preds.dataset == MITIGATIONS[mit])]
-    if mitg.empty:
+    if mitg.empty and mit == "Reweighting" and model not in RW_MODELS:
         st.markdown(f'<div class="note"><b>Not evaluated.</b> {RW_SCOPE} Choose FairFinGAN, or one of those models.</div>', unsafe_allow_html=True)
+    elif mitg.empty:
+        st.error(f"Predictions for {model} with {mit} are not available in the loaded data file. Check monitor_predictions.csv or clear the app cache.")
     else:
         m_orig = model_metrics(orig, attr["column"], attr["priv_code"], attr["under_code"])
         m_mit = model_metrics(mitg, attr["column"], attr["priv_code"], attr["under_code"])
@@ -197,12 +198,13 @@ elif page == "Model":
             before = m_orig[key]; after = m_mit[key]
             delta = abs(after) - abs(before)          # negative = fairer
             cls, txt = status_pill(after, green_cut, red_cut)
-            if abs(delta) < EPS:
+            size = "&lt;0.001" if abs(delta) < EPS else f"{abs(delta):.3f}"
+            if abs(delta) < 1e-12:
                 dcls, dtxt = "flat", "no change vs original"
             elif delta < 0:
-                dcls, dtxt = "good", f"▼ {abs(delta):.3f} smaller gap vs original"; better.append(label)
+                dcls, dtxt = "good", f"▼ {size} smaller gap vs original"; better.append(label)
             else:
-                dcls, dtxt = "bad", f"▲ {abs(delta):.3f} larger gap vs original"; worse.append(label)
+                dcls, dtxt = "bad", f"▲ {size} larger gap vs original"; worse.append(label)
             if cls != "ok": out.append(f"{label} ({txt.lower()})")
             with col:
                 st.markdown(
@@ -224,7 +226,7 @@ elif page == "Model":
         parts.append(f"<b>Smaller gap:</b> {', '.join(better) if better else 'none'}.")
         parts.append(f"<b>Larger gap:</b> {', '.join(worse) if worse else 'none'}.")
         parts.append(f"<b>Outside tolerance after mitigation:</b> {', '.join(out) if out else 'none'}.")
-        parts.append(f"<b>Cost:</b> accuracy {acc_m-acc_o:+.3f}, balanced accuracy {bacc_m-bacc_o:+.3f}.")
+        parts.append(f"<b>Performance change:</b> accuracy {acc_m-acc_o:+.3f}, balanced accuracy {bacc_m-bacc_o:+.3f}.")
         st.markdown(f'<div class="concl"><b>In this run ({model}, {mit}, {attr_name.lower()}):</b> ' + " ".join(parts) +
                     ' One run can differ from the ten-seed average shown in Compare and Overview.</div>', unsafe_allow_html=True)
 
