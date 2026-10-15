@@ -4,11 +4,13 @@ Prototype of a fairness monitoring tool for credit scoring models, built as part
 
 ## What it does
 
-The monitor evaluates whether a credit scoring model treats demographic groups (sex, age) fairly, using statistical parity and equalized odds (reported as the true positive rate gap and the false positive rate gap, with default = 1 as the positive class). It reads only the model's predictions and the protected attribute, never the input features, which keeps the monitoring role separate from the modelling role.
+Gaps are computed as unprivileged minus privileged (for sex: men minus women). The labels contain a bias injected on purpose, so all results describe a controlled scenario.
 
-- **Model**: one model before and after mitigation, with a status indicator for each metric against an adjustable tolerance and a downloadable model card.
-- **Compare**: models ranked by fairness after mitigation, with the spread of each metric across the ten seeds.
-- **Overview**: the effect of both mitigation methods on both metrics for every model, and the fairness-accuracy trade-off.
+The monitor evaluates whether a credit scoring model treats demographic groups (sex, age) fairly, using statistical parity and equalized odds (reported as the true positive rate gap and the false positive rate gap, with default = 1 as the positive class). It reads the model's predictions, the observed labels (as reference) and the protected attribute, never the input features, which keeps the monitoring role separate from the modelling role.
+
+- **Model**: one model before and after mitigation (FairFinGAN or reweighting) on a single run (seed 1), with signed gaps, a status indicator against an adjustable tolerance, accuracy and balanced accuracy, a short summary and a downloadable model card.
+- **Compare**: models ranked by fairness after either mitigation method (mean of ten seeds), with the spread of each metric across the seeds.
+- **Overview**: the effect of both mitigation methods on both metrics for every model (ten seeds, sex), and the fairness-accuracy trade-off.
 - **Methodology**: data, metrics and scope, with a SHAP-based proxy check presented as an exploratory diagnostic.
 
 ## Experiment
@@ -24,7 +26,7 @@ Default of Credit Card Clients dataset (Taiwan, UCI), with a controlled label bi
 ## Files
 
 - `app.py`: Streamlit app
-- `monitor_predictions.csv`: test-set predictions of one representative run (seed 1)
+- `monitor_predictions.csv`: test-set predictions of one representative run (seed 1) for the original, FairFinGAN and reweighting conditions. The reweighting predictions were regenerated outside the main experiment with the same data, split and hyperparameters; they match the experiment exactly for five models and in 99.7% of cases for CatBoost (library version).
 - `all_conditions_final.csv`, `reweighing_results_holdout_v2.csv`: per-seed results (ten seeds)
 - `paired_differences_by_seed.csv`: paired effects with uncorrected and corrected standard errors
 - `shap_importance.csv`: SHAP proxy check (tuned XGBoost, seed 1)
