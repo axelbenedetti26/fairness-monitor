@@ -68,7 +68,7 @@ MODEL_DESC = {
     "LogReg": "Logistic regression — a linear model, the classic credit-scoring baseline.",
     "SVM": "Linear support vector machine — another linear classifier.",
     "kNN": "k-nearest neighbors — classifies by the closest examples in the data.",
-    "MLP": "A small neural network with two hidden layers.",
+    "MLP": "A small neural network (multilayer perceptron).",
     "RandomForest": "An ensemble of decision trees on random subsets.",
     "GradBoost": "Gradient boosting — trees built sequentially to correct each other.",
     "XGBoost": "An optimized gradient-boosting library, strong on tabular data.",
@@ -407,7 +407,8 @@ elif page == "Methodology":
         <div class="block">
             <div class="block-h">Models and mitigation</div>
             <div class="lede">Nine classifiers (logistic regression, linear SVM, k-NN, a small neural
-            network, and five tree ensembles) under fixed configurations. Two pre-processing mitigation
+            network, and five tree ensembles), with hyperparameters selected by cross-validation inside each
+            seed on the training data only. Two pre-processing mitigation
             methods are compared: <b>FairFinGAN</b> (a fairness-aware GAN generating de-biased synthetic
             data, on all nine models) and <b>reweighting</b> (AIF360, on six models).</div>
         </div>
